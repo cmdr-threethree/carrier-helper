@@ -14,7 +14,9 @@ export const config = {
   mockAuth: env.VITE_MOCK_AUTH === 'true',
   language: (env.VITE_CAPI_LANGUAGE ?? 'en').trim() || 'en',
   authBase: 'https://auth.frontierstore.net',
-  capiBase: 'https://companion.orerve.net',
+  // Frontier's actual CAPI responses omit Access-Control-Allow-Origin, so the
+  // browser calls a same-origin Pages Function which forwards to Frontier.
+  capiBase: (env.VITE_CAPI_BASE ?? '').trim() || '/api/capi',
   scopes: 'auth capi',
   cooldownMs: 15 * 60 * 1000,
   rawRetentionMs: 7 * 24 * 60 * 60 * 1000,

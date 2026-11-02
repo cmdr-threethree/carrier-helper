@@ -1,9 +1,15 @@
 # Carrier Helper
 
 A local-first, browser-only fleet carrier tracker for Elite Dangerous. It talks
-directly to Frontier's OAuth2 and Companion API (CAPI) from the browser and
-stores everything in IndexedDB. There is no backend, no telemetry, and no
-third-party scripts loaded at runtime.
+to Frontier's OAuth2 directly from the browser, sends CAPI requests through a
+tiny same-origin Cloudflare Pages Function, and stores everything in IndexedDB.
+There is no database or application backend, no telemetry, and no third-party
+scripts loaded at runtime.
+
+The proxy exists because Frontier's **actual CAPI responses omit
+`Access-Control-Allow-Origin`**, even though the preflight response includes it.
+A browser therefore cannot read a direct `companion.orerve.net` response. The
+Pages Function forwards only `GET /fleetcarrier` and adds no application state.
 
 ## Features
 
@@ -87,12 +93,16 @@ Security headers are provided for:
 
 The CSP allows requests only to:
 
-- `https://auth.frontierstore.net`
-- `https://companion.orerve.net`
+- same-origin `/api/capi/*` (`'self'`)
+- `https://auth.frontierstore.net` for token exchange, refresh, and `/me`
 
-If you deploy to a different origin, update the Frontier redirect URI, the
-`VITE_FRONTIER_REDIRECT_URI` build variable, and the CSP `connect-src` only if
-Frontier changes its hosts.
+CAPI traffic goes to the same origin and is forwarded by the Pages Function in
+`functions/api/capi/[endpoint].ts` to `https://companion.orerve.net`. If you
+deploy somewhere other than Cloudflare Pages, you must provide an equivalent
+same-origin proxy; the `functions/` directory is Cloudflare-specific.
+
+If you deploy to a different origin, update the Frontier redirect URI and the
+`VITE_FRONTIER_REDIRECT_URI` build variable.
 
 ## How it works
 
@@ -186,20 +196,31 @@ Import supports merge (deduplicate by account ID and snapshot UUID) or replace.
 
 ## Frontier CAPI notes
 
-Frontier's CORS preflight for the OAuth token endpoints and the CAPI endpoint
-allows browser requests with the `Authorization` header (verified 2026-11-02).
-Browsers cannot customize `User-Agent`; CAPI does not appear to require it, but
-this should be re-verified with an authenticated request.
+Frontier's CAPI preflight response includes `Access-Control-Allow-Origin: *`,
+but the actual GET response does not. Browsers therefore discard direct CAPI
+responses, which shows up as an empty or failed request in the Network tab.
+
+The OAuth `/token` and `/me` endpoints are different: their actual responses do
+include `Access-Control-Allow-Origin: *`, so authentication stays direct.
+
+The Pages Function:
+
+- accepts only `GET /api/capi/fleetcarrier`
+- forwards only `Authorization`, `Accept`, `Accept-Language`, and the
+  `language` query parameter
+- sends a `User-Agent` identifying Carrier Helper
+- forwards the upstream status, JSON body, and `Retry-After`
+- strips cookies and caches nothing
 
 Before using a real Frontier account, verify these on the deployed origin:
 
 1. PKCE login completes and `/me` returns the customer ID.
 2. The refresh-token grant succeeds without `client_secret`.
-3. `/fleetcarrier` accepts a request made with the browser's User-Agent.
+3. `/api/capi/fleetcarrier` returns `200` and carrier JSON in the browser.
+4. The response appears in the Network tab without a CORS failure.
 
-If Frontier ever rejects browser requests or requires a client secret for token
-refresh, the network adapters in `src/auth` and `src/capi` can be pointed at a
-small proxy without changing storage or UI code.
+If Frontier ever requires a client secret for token refresh, a similar proxy
+for `/token` can be added without changing storage or UI code.
 
 ## Scripts
 
@@ -224,6 +245,8 @@ src/
   storage/    IndexedDB schema, repositories, retention
   ui/         DOM helpers, router, pages, components, layout
   sync.ts     per-account lock, cooldown, fetch, snapshot persistence
+functions/
+  api/capi/[endpoint].ts   same-origin Cloudflare Pages Function proxy
 ```
 
 ## License

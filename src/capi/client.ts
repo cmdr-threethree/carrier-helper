@@ -26,13 +26,26 @@ export function parseRetryAfter(value: string | null, now = Date.now()): number 
   return null;
 }
 
+export function buildCapiUrl(
+  baseUrl: string,
+  language: string,
+  origin = typeof window !== 'undefined' ? window.location.origin : 'https://localhost',
+): URL {
+  const base = /^https?:\/\//i.test(baseUrl)
+    ? baseUrl
+    : new URL(baseUrl, origin).toString();
+  const url = new URL('fleetcarrier', base.endsWith('/') ? base : `${base}/`);
+  if (language) url.searchParams.set('language', language);
+  return url;
+}
+
 export async function fetchFleetCarrier(
   accessToken: string,
   tokenType: string,
   options: CapiRequestOptions = {},
 ): Promise<CapiResult> {
   const {
-    baseUrl = 'https://companion.orerve.net',
+    baseUrl = '/api/capi',
     language = 'en',
     fetchImpl = fetch,
     now = Date.now,
@@ -42,8 +55,7 @@ export async function fetchFleetCarrier(
     return { kind: 'network', error: new AppError('network', 'The browser is offline.') };
   }
 
-  const url = new URL('/fleetcarrier', baseUrl);
-  if (language) url.searchParams.set('language', language);
+  const url = buildCapiUrl(baseUrl, language);
 
   let response: Response;
   try {

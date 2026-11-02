@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { fetchFleetCarrier, parseRetryAfter } from '../src/capi/client';
+import { buildCapiUrl, fetchFleetCarrier, parseRetryAfter } from '../src/capi/client';
 import { resetDatabaseForTests } from '../src/storage/db';
 
 function response(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
@@ -16,6 +16,15 @@ describe('CAPI client', () => {
 
   afterEach(async () => {
     await resetDatabaseForTests();
+  });
+
+  it('builds same-origin proxy URLs and direct absolute URLs', () => {
+    expect(buildCapiUrl('/api/capi', 'en', 'https://edcarrier.threethree.cc').toString()).toBe(
+      'https://edcarrier.threethree.cc/api/capi/fleetcarrier?language=en',
+    );
+    expect(
+      buildCapiUrl('https://companion.orerve.net', 'fr').toString(),
+    ).toBe('https://companion.orerve.net/fleetcarrier?language=fr');
   });
 
   it('returns carrier data on 200', async () => {
