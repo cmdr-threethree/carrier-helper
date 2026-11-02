@@ -1,3 +1,9 @@
+/**
+ * CAPI is inconsistent: most numbers are JSON numbers, but some fields
+ * (notably balance, fuel, order stock, and order price) arrive as strings.
+ */
+export type CapiNumber = number | string;
+
 export interface CarrierName {
   callsign?: string;
   vanityName?: string;
@@ -8,61 +14,61 @@ export interface ItineraryEntry {
   departureTime?: string | number | null;
   arrivalTime?: string | number | null;
   state?: string;
-  visitDurationSeconds?: number;
+  visitDurationSeconds?: CapiNumber;
   starsystem?: string;
 }
 
 export interface CarrierItinerary {
   completed?: ItineraryEntry[];
-  totalDistanceJumpedLY?: number;
+  totalDistanceJumpedLY?: CapiNumber;
   currentJump?: string | null;
 }
 
 export interface CarrierCapacity {
-  shipPacks?: number;
-  modulePacks?: number;
-  cargoForSale?: number;
-  cargoNotForSale?: number;
-  cargoSpaceReserved?: number;
-  crew?: number;
-  freeSpace?: number;
-  microresourceCapacityTotal?: number;
-  microresourceCapacityFree?: number;
-  microresourceCapacityUsed?: number;
-  microresourceCapacityReserved?: number;
+  shipPacks?: CapiNumber;
+  modulePacks?: CapiNumber;
+  cargoForSale?: CapiNumber;
+  cargoNotForSale?: CapiNumber;
+  cargoSpaceReserved?: CapiNumber;
+  crew?: CapiNumber;
+  freeSpace?: CapiNumber;
+  microresourceCapacityTotal?: CapiNumber;
+  microresourceCapacityFree?: CapiNumber;
+  microresourceCapacityUsed?: CapiNumber;
+  microresourceCapacityReserved?: CapiNumber;
 }
 
 export interface MarketFinances {
-  cargoTotalValue?: number;
-  allTimeProfit?: number;
-  numCommodsForSale?: number;
-  numCommodsPurchaseOrders?: number;
-  balanceAllocForPurchaseOrders?: number;
+  cargoTotalValue?: CapiNumber;
+  allTimeProfit?: CapiNumber;
+  numCommodsForSale?: CapiNumber;
+  numCommodsPurchaseOrders?: CapiNumber;
+  balanceAllocForPurchaseOrders?: CapiNumber;
 }
 
 export interface BartenderFinances {
-  microresourcesTotalValue?: number;
-  allTimeProfit?: number;
-  microresourcesForSale?: number;
-  microresourcesPurchaseOrders?: number;
-  profitHistory?: number[];
+  microresourcesTotalValue?: CapiNumber;
+  allTimeProfit?: CapiNumber;
+  microresourcesForSale?: CapiNumber;
+  microresourcesPurchaseOrders?: CapiNumber;
+  profitHistory?: CapiNumber[];
 }
 
 export interface CarrierFinance {
-  bankBalance?: number;
-  bankReservedBalance?: number;
-  taxation?: number;
-  service_taxation?: Record<string, number>;
-  numServices?: number;
-  numOptionalServices?: number;
-  debtThreshold?: number;
-  maintenance?: number;
-  maintenanceToDate?: number;
-  coreCost?: number;
-  servicesCost?: number;
-  servicesCostToDate?: number;
-  jumpsCost?: number;
-  numJumps?: number;
+  bankBalance?: CapiNumber;
+  bankReservedBalance?: CapiNumber;
+  taxation?: CapiNumber;
+  service_taxation?: Record<string, CapiNumber>;
+  numServices?: CapiNumber;
+  numOptionalServices?: CapiNumber;
+  debtThreshold?: CapiNumber;
+  maintenance?: CapiNumber;
+  maintenanceToDate?: CapiNumber;
+  coreCost?: CapiNumber;
+  servicesCost?: CapiNumber;
+  servicesCostToDate?: CapiNumber;
+  jumpsCost?: CapiNumber;
+  numJumps?: CapiNumber;
   bartender?: BartenderFinances;
 }
 
@@ -71,8 +77,8 @@ export interface CrewMember {
   gender?: string;
   enabled?: string | boolean;
   faction?: string;
-  salary?: number;
-  hiringPrice?: number;
+  salary?: CapiNumber;
+  hiringPrice?: CapiNumber;
   lastEdit?: string | number;
   avatarStr?: string;
 }
@@ -80,7 +86,7 @@ export interface CrewMember {
 export interface ServiceCrew {
   crewMember?: CrewMember;
   invoicesWeekToDate?: Array<{
-    wages?: number;
+    wages?: CapiNumber;
     from?: string | number;
     until?: string | number;
     type?: string;
@@ -90,16 +96,16 @@ export interface ServiceCrew {
 
 export interface CommoditySale {
   name?: string;
-  stock?: number;
-  price?: number;
+  stock?: CapiNumber;
+  price?: CapiNumber;
   blackmarket?: boolean;
 }
 
 export interface CommodityPurchase {
   name?: string;
-  total?: number;
-  outstanding?: number;
-  price?: number;
+  total?: CapiNumber;
+  outstanding?: CapiNumber;
+  price?: CapiNumber;
 }
 
 export interface CommodityOrders {
@@ -108,13 +114,13 @@ export interface CommodityOrders {
 }
 
 export interface MicroResourceOrder {
-  id?: number;
+  id?: CapiNumber;
   name?: string;
   locName?: string;
-  stock?: number;
-  price?: number;
-  total?: number;
-  outstanding?: number;
+  stock?: CapiNumber;
+  price?: CapiNumber;
+  total?: CapiNumber;
+  outstanding?: CapiNumber;
 }
 
 export interface MicroResourceOrders {
@@ -125,15 +131,15 @@ export interface MicroResourceOrders {
 export interface CargoLine {
   commodity?: string;
   mission?: boolean;
-  qty?: number;
-  value?: number;
+  qty?: CapiNumber;
+  value?: CapiNumber;
   stolen?: boolean;
   locName?: string;
 }
 
 export interface MicroResource {
-  id?: number;
-  quantity?: number;
+  id?: CapiNumber;
+  quantity?: CapiNumber;
   name?: string;
   locName?: string;
 }
@@ -145,22 +151,22 @@ export interface CarrierLocker {
 }
 
 export interface MarketCommodity {
-  id?: number;
+  id?: CapiNumber;
   categoryname?: string;
   name?: string;
-  stock?: number;
-  buyPrice?: number;
-  sellPrice?: number;
-  demand?: number;
+  stock?: CapiNumber;
+  buyPrice?: CapiNumber;
+  sellPrice?: CapiNumber;
+  demand?: CapiNumber;
   legality?: string;
-  meanPrice?: number;
-  demandBracket?: number;
-  stockBracket?: number;
+  meanPrice?: CapiNumber;
+  demandBracket?: CapiNumber;
+  stockBracket?: CapiNumber;
   locName?: string;
 }
 
 export interface CarrierMarket {
-  id?: number;
+  id?: CapiNumber;
   name?: string;
   outpostType?: string;
   imported?: Record<string, string> | string[];
@@ -168,12 +174,12 @@ export interface CarrierMarket {
   services?: Record<string, string>;
   commodities?: MarketCommodity[];
   prohibited?: Record<string, string>;
-  economies?: Record<string, { name?: string; proportion?: number }>;
+  economies?: Record<string, { name?: string; proportion?: CapiNumber }>;
 }
 
 export interface ReputationEntry {
   majorFaction?: string;
-  score?: number;
+  score?: CapiNumber;
 }
 
 /**
@@ -183,8 +189,8 @@ export interface ReputationEntry {
 export interface FleetCarrierResponse {
   name?: CarrierName;
   currentStarSystem?: string;
-  balance?: number;
-  fuel?: number;
+  balance?: CapiNumber;
+  fuel?: CapiNumber;
   state?: string;
   theme?: string;
   dockingAccess?: string;

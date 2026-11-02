@@ -1,3 +1,4 @@
+import { toFiniteNumber } from '../lib/format';
 import { parseCapiDate } from '../lib/time';
 import type {
   FleetCarrierResponse,
@@ -6,7 +7,7 @@ import type {
 } from './types';
 
 function num(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  return toFiniteNumber(value) ?? 0;
 }
 
 function text(value: unknown, fallback = ''): string {

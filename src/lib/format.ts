@@ -1,19 +1,35 @@
-export function formatNumber(value: number, maximumFractionDigits = 0): string {
-  if (!Number.isFinite(value)) return '—';
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits }).format(value);
+/**
+ * Frontier CAPI frequently returns numeric values as JSON strings, e.g.
+ * `"balance": "1725609459"`. Coerce both representations safely.
+ */
+export function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
 
-export function formatCredits(value: number, maximumFractionDigits = 0): string {
-  if (!Number.isFinite(value)) return '—';
-  return `${formatNumber(value, maximumFractionDigits)} cr`;
+export function formatNumber(value: unknown, maximumFractionDigits = 0): string {
+  const number = toFiniteNumber(value);
+  if (number === null) return '—';
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits }).format(number);
 }
 
-export function formatCompact(value: number, maximumFractionDigits = 1): string {
-  if (!Number.isFinite(value)) return '—';
+export function formatCredits(value: unknown, maximumFractionDigits = 0): string {
+  const number = toFiniteNumber(value);
+  if (number === null) return '—';
+  return `${formatNumber(number, maximumFractionDigits)} cr`;
+}
+
+export function formatCompact(value: unknown, maximumFractionDigits = 1): string {
+  const number = toFiniteNumber(value);
+  if (number === null) return '—';
   return new Intl.NumberFormat(undefined, {
     notation: 'compact',
     maximumFractionDigits,
-  }).format(value);
+  }).format(number);
 }
 
 export function formatBytes(bytes: number): string {
@@ -30,11 +46,12 @@ export function formatBytes(bytes: number): string {
   return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value)} ${unit}`;
 }
 
-export function formatPercent(value: number, fractionDigits = 0): string {
-  if (!Number.isFinite(value)) return '—';
+export function formatPercent(value: unknown, fractionDigits = 0): string {
+  const number = toFiniteNumber(value);
+  if (number === null) return '—';
   return `${new Intl.NumberFormat(undefined, {
     maximumFractionDigits: fractionDigits,
-  }).format(value)}%`;
+  }).format(number)}%`;
 }
 
 export function formatText(value: unknown, fallback = '—'): string {

@@ -1,7 +1,13 @@
 import { isDemoAccount, reauthAccount } from '../../auth/accounts';
 import { cooldownRemaining, countdownLabel } from '../../capi/cooldown';
 import type { FleetCarrierResponse, SummaryMetrics } from '../../capi/types';
-import { formatCredits, formatNumber, formatText, humanizeKey } from '../../lib/format';
+import {
+  formatCredits,
+  formatNumber,
+  formatText,
+  humanizeKey,
+  toFiniteNumber,
+} from '../../lib/format';
 import { carrierDisplayName } from '../../lib/hex';
 import { formatDateTime, formatDuration, formatRelative, parseCapiDate } from '../../lib/time';
 import { userMessage } from '../../lib/errors';
@@ -25,11 +31,11 @@ function dash(value: unknown): string {
 }
 
 function num(value: unknown): string {
-  return typeof value === 'number' && Number.isFinite(value) ? formatNumber(value) : '—';
+  return formatNumber(value);
 }
 
 function credits(value: unknown): string {
-  return typeof value === 'number' && Number.isFinite(value) ? formatCredits(value) : '—';
+  return formatCredits(value);
 }
 
 function toneForState(state: string): 'ok' | 'warn' | 'danger' | 'neutral' {
@@ -337,7 +343,7 @@ function itineraryTab(data: FleetCarrierResponse): Child[] {
           dash(entry.starsystem),
           formatDateTime(parseCapiDate(entry.arrivalTime) ?? entry.arrivalTime),
           formatDateTime(parseCapiDate(entry.departureTime) ?? entry.departureTime),
-          formatDuration((entry.visitDurationSeconds ?? 0) * 1000),
+          formatDuration((toFiniteNumber(entry.visitDurationSeconds) ?? 0) * 1000),
         ]),
         { emptyText: 'No completed jumps in this snapshot.' },
       ),

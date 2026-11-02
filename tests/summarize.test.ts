@@ -86,6 +86,65 @@ describe('carrier summary', () => {
     expect(summary.reputation[0]?.majorFaction).toBe('federation');
   });
 
+  it('coerces numeric strings returned by CAPI', () => {
+    const summary = summarizeCarrier({
+      balance: '1725609459',
+      fuel: '887',
+      capacity: {
+        cargoNotForSale: '24843',
+        freeSpace: '157',
+      },
+      finance: {
+        bankBalance: '7286840885',
+        maintenance: '5000000',
+      },
+      marketFinances: {
+        cargoTotalValue: '306055713',
+        allTimeProfit: '15884252863',
+      },
+      cargo: [
+        { commodity: 'Tritium', qty: '1143', value: '60644913' },
+        { commodity: 'Wine', qty: '23700', value: '245410800' },
+      ],
+      orders: {
+        commodities: {
+          sales: [
+            { name: 'gold', stock: '0', price: '161554' },
+            { name: 'superconductors', stock: '0', price: '64466' },
+          ],
+          purchases: [],
+        },
+      },
+      itinerary: {
+        totalDistanceJumpedLY: '5927',
+        completed: [
+          {
+            starsystem: 'HIP 57784',
+            arrivalTime: '2026-10-24 14:02:00',
+            departureTime: null,
+            visitDurationSeconds: '792783',
+          },
+        ],
+      },
+      reputation: [{ majorFaction: 'empire', score: '100' }],
+    });
+
+    expect(summary.balance).toBe(1_725_609_459);
+    expect(summary.fuel).toBe(887);
+    expect(summary.capacity.free).toBe(157);
+    expect(summary.capacity.cargoNotForSale).toBe(24_843);
+    expect(summary.finance.bankBalance).toBe(7_286_840_885);
+    expect(summary.finance.maintenance).toBe(5_000_000);
+    expect(summary.market.cargoTotalValue).toBe(306_055_713);
+    expect(summary.market.allTimeProfit).toBe(15_884_252_863);
+    expect(summary.cargo.totalQty).toBe(24_843);
+    expect(summary.cargo.totalValue).toBe(5_885_553_095_559);
+    expect(summary.orders.sales).toBe(2);
+    expect(summary.totalDistanceLY).toBe(5_927);
+    expect(summary.itinerary[0]?.visitDurationSeconds).toBe(792_783);
+    expect(summary.reputation[0]?.score).toBe(100);
+  });
+
   it('handles a missing payload without throwing', () => {
     const summary = summarizeCarrier({});
     expect(summary.balance).toBe(0);
