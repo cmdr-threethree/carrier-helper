@@ -126,6 +126,10 @@ re-authorized. The UI surfaces that state instead of deleting data.
 To add a second Frontier account, sign out of Frontier first or use a private
 window if the browser silently reuses the current Frontier login session.
 
+Account labels are entered when connecting and can be renamed later in
+Settings. They are local display names only; they are not fetched from the CAPI,
+do not consume a sync slot, and do not change anything in Elite Dangerous.
+
 ### Sync and rate limit
 
 One sync is one request:

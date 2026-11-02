@@ -12,6 +12,7 @@ export interface PendingAuth {
   verifier: string;
   mode: AuthMode;
   accountId?: string;
+  label?: string;
   returnTo: string;
   createdAt: number;
 }
@@ -63,6 +64,7 @@ export function buildAuthorizationUrl(pending: PendingAuth, challenge: string): 
 export async function beginAuth(options: {
   mode: AuthMode;
   accountId?: string;
+  label?: string;
   returnTo?: string;
 }): Promise<void> {
   if (!config.clientId) {
@@ -79,6 +81,7 @@ export async function beginAuth(options: {
     verifier,
     mode: options.mode,
     accountId: options.accountId,
+    label: options.label?.trim() || undefined,
     returnTo:
       options.returnTo ??
       (typeof window !== 'undefined' ? window.location.hash || '#/' : '#/'),
@@ -113,6 +116,10 @@ export function readPendingAuth(): PendingAuth | null {
       verifier: parsed.verifier,
       mode: parsed.mode,
       accountId: typeof parsed.accountId === 'string' ? parsed.accountId : undefined,
+      label:
+        typeof parsed.label === 'string' && parsed.label.trim()
+          ? parsed.label.trim()
+          : undefined,
       returnTo: typeof parsed.returnTo === 'string' ? parsed.returnTo : '#/',
       createdAt,
     };
@@ -212,7 +219,7 @@ async function fetchMe(
   return {
     customerId,
     platform: me.platform || 'frontier',
-    displayName: `Commander ${customerId}`,
+    displayName: `Frontier account ${customerId}`,
   };
 }
 

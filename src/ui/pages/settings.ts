@@ -1,13 +1,13 @@
 import {
   accountLabel,
   authorizationWarning,
-  connectAccount,
   deleteAccountData,
   disconnectAccount,
   isDemoAccount,
   reauthAccount,
   setSelectedAccountId,
 } from '../../auth/accounts';
+import { connectAccountWithPrompt, renameAccountWithPrompt } from '../account-actions';
 import { importBackup, parseBackupFile, previewBackup, type ImportMode } from '../../backup/import';
 import { downloadBackup, exportAllData, exportCarrierData } from '../../backup/export';
 import type { BackupV1 } from '../../backup/validate';
@@ -29,7 +29,23 @@ import type { AccountRecord } from '../../storage/schema';
 import type { PageContext, PageResult } from './types';
 
 function accountActions(account: AccountRecord): Child[] {
-  const actions: Child[] = [];
+  const actions: Child[] = [
+    el(
+      'button',
+      {
+        class: 'btn btn-ghost btn-small',
+        type: 'button',
+        on: {
+          click: () => {
+            void renameAccountWithPrompt(account).then((changed) => {
+              if (changed) requestRender();
+            });
+          },
+        },
+      },
+      'Rename',
+    ),
+  ];
   if (!isDemoAccount(account)) {
     actions.push(
       el(
@@ -381,7 +397,7 @@ export async function renderSettings(context: PageContext): Promise<PageResult> 
       type: 'button',
       on: {
         click: () => {
-          void connectAccount()
+          void connectAccountWithPrompt()
             .then((account) => {
               if (account) requestRender();
             })

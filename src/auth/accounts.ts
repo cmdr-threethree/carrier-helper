@@ -51,7 +51,7 @@ export function resolveSelectedAccount(
 }
 
 export function accountLabel(account: AccountRecord): string {
-  return account.displayName || `Commander ${account.id}`;
+  return account.displayName || `Frontier account ${account.id}`;
 }
 
 export function isDemoAccount(account: AccountRecord): boolean {
@@ -73,14 +73,39 @@ export function authorizationWarning(
   return null;
 }
 
-export async function connectAccount(): Promise<AccountRecord | null> {
+export async function connectAccount(displayName?: string): Promise<AccountRecord | null> {
+  const label = displayName?.trim() || undefined;
   if (config.mockAuth) {
-    const account = await createDemoAccount();
+    const account = await createDemoAccount(Date.now(), label);
     setSelectedAccountId(account.id);
     return account;
   }
-  await beginAuth({ mode: 'add' });
+  await beginAuth({ mode: 'add', label });
   return null;
+}
+
+export async function renameAccount(
+  accountId: string,
+  displayName: string,
+): Promise<AccountRecord> {
+  const name = displayName.trim();
+  if (!name) {
+    throw new AppError('invalid_data', 'Commander name cannot be empty.');
+  }
+  if (name.length > 80) {
+    throw new AppError('invalid_data', 'Commander name is too long.');
+  }
+  const account = await getAccount(accountId);
+  if (!account) {
+    throw new AppError('not_found', 'Account not found.');
+  }
+  const updated: AccountRecord = {
+    ...account,
+    displayName: name,
+    updatedAt: Date.now(),
+  };
+  await saveAccount(updated);
+  return updated;
 }
 
 export async function reauthAccount(accountId: string): Promise<void> {
@@ -93,7 +118,7 @@ export async function reauthAccount(accountId: string): Promise<void> {
 interface UpsertAuthInput {
   customerId: string;
   platform: string;
-  displayName: string;
+  displayName?: string;
   tokens: TokenSet;
   now: number;
 }
@@ -104,7 +129,12 @@ async function upsertAuthorizedAccount(input: UpsertAuthInput): Promise<AccountR
     const updated: AccountRecord = {
       ...existing,
       platform: input.platform,
-      displayName: input.displayName || existing.displayName,
+      // Adding/re-authorizing an existing account must not overwrite a name
+      // the user chose later.
+      displayName:
+        existing.displayName ||
+        input.displayName ||
+        `Frontier account ${input.customerId}`,
       tokens: input.tokens,
       authorizedAt: input.now,
       needsReauth: false,
@@ -117,7 +147,7 @@ async function upsertAuthorizedAccount(input: UpsertAuthInput): Promise<AccountR
   const account: AccountRecord = {
     id: input.customerId,
     platform: input.platform,
-    displayName: input.displayName,
+    displayName: input.displayName || `Frontier account ${input.customerId}`,
     tokens: input.tokens,
     authorizedAt: input.now,
     needsReauth: false,
@@ -138,7 +168,7 @@ export async function completeAuthCallback(
   const account = await upsertAuthorizedAccount({
     customerId: result.customerId,
     platform: result.platform,
-    displayName: result.displayName,
+    displayName: result.pending.label,
     tokens: result.tokens,
     now,
   });

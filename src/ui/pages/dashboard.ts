@@ -1,10 +1,10 @@
 import {
   accountLabel,
   authorizationWarning,
-  connectAccount,
   isDemoAccount,
   reauthAccount,
 } from '../../auth/accounts';
+import { connectAccountWithPrompt } from '../account-actions';
 import { cooldownRemaining, countdownLabel } from '../../capi/cooldown';
 import type { SummaryRecord } from '../../storage/schema';
 import type { AccountRecord, CarrierRecord } from '../../storage/schema';
@@ -182,7 +182,7 @@ export async function renderDashboard(context: PageContext): Promise<PageResult>
       type: 'button',
       on: {
         click: () => {
-          void connectAccount()
+          void connectAccountWithPrompt()
             .then((account) => {
               if (account) requestRender();
             })

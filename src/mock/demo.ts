@@ -238,7 +238,10 @@ export function demoCarrierResponse(
   };
 }
 
-export async function createDemoAccount(now = Date.now()): Promise<AccountRecord> {
+export async function createDemoAccount(
+  now = Date.now(),
+  displayName?: string,
+): Promise<AccountRecord> {
   const existing = await listAccounts();
   const demoIndexes = existing
     .map((account) => /^demo-(\d+)$/.exec(account.id))
@@ -248,12 +251,12 @@ export async function createDemoAccount(now = Date.now()): Promise<AccountRecord
   const accountId = `demo-${index}`;
   const callsign = `DMO-${pad(index)}`;
   const carrierId = crypto.randomUUID();
-  const displayName = `Demo Commander ${index}`;
+  const label = displayName?.trim() || `Demo Commander ${index}`;
 
   const account: AccountRecord = {
     id: accountId,
     platform: 'demo',
-    displayName,
+    displayName: label,
     tokens: null,
     authorizedAt: now,
     needsReauth: false,

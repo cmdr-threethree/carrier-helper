@@ -1,8 +1,5 @@
-import {
-  connectAccount,
-  resolveSelectedAccount,
-  setSelectedAccountId,
-} from '../auth/accounts';
+import { resolveSelectedAccount, setSelectedAccountId } from '../auth/accounts';
+import { connectAccountWithPrompt } from './account-actions';
 import { config } from '../config';
 import { isAppError, toAppError, userMessage } from '../lib/errors';
 import { log } from '../lib/log';
@@ -106,7 +103,7 @@ async function renderApp(): Promise<void> {
         else scheduleRender();
       },
       onAddAccount: () => {
-        void connectAccount()
+        void connectAccountWithPrompt()
           .then((account) => {
             if (account) scheduleRender();
           })
