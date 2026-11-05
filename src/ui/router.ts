@@ -3,6 +3,7 @@ import { config } from '../config';
 import { isAppError, toAppError, userMessage } from '../lib/errors';
 import { log } from '../lib/log';
 import { listAccounts } from '../storage/repos';
+import { invalidateStorageBreakdown } from '../storage/stats';
 import { syncAccount } from '../sync';
 import { el } from './dom';
 import { showToast } from './components/toast';
@@ -140,6 +141,7 @@ export async function syncAndReport(accountId: string): Promise<void> {
     if (result.status === 'failed' && result.error.code === 'auth') {
       showToast(userMessage(result.error), 'error');
     }
+    await invalidateStorageBreakdown();
     scheduleRender();
   } catch (error) {
     if (isAppError(error) && error.code === 'not_found') {

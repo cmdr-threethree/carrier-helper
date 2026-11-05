@@ -1,7 +1,14 @@
+import { extractCargoPoints, extractMarketPoints } from '../capi/extract';
 import { summarizeCarrier } from '../capi/summarize';
 import type { FleetCarrierResponse } from '../capi/types';
 import { encodeCapiName } from '../lib/hex';
-import { commitSnapshotBundle, listAccounts, putSummaryIfAbsent } from '../storage/repos';
+import {
+  commitSnapshotBundle,
+  listAccounts,
+  putCargoPoints,
+  putMarketPoints,
+  putSummaryIfAbsent,
+} from '../storage/repos';
 import {
   emptySyncState,
   type AccountRecord,
@@ -170,9 +177,9 @@ export function demoCarrierResponse(
       },
     },
     cargo: [
-      { commodity: 'gold', locName: 'Gold', qty: 120, value: 48_000, stolen: false, mission: false },
-      { commodity: 'silver', locName: 'Silver', qty: 300, value: 32_000, stolen: false, mission: false },
-      { commodity: 'tritium', locName: 'Tritium', qty: 540, value: 52_000, stolen: false, mission: false },
+      { commodity: 'gold', locName: 'Gold', qty: 120, value: 5_760_000, stolen: false, mission: false },
+      { commodity: 'silver', locName: 'Silver', qty: 300, value: 9_600_000, stolen: false, mission: false },
+      { commodity: 'tritium', locName: 'Tritium', qty: 540, value: 28_080_000, stolen: false, mission: false },
     ],
     orders: {
       commodities: {
@@ -307,7 +314,12 @@ export async function createDemoAccount(
 
   await commitSnapshotBundle({ account, carrier, snapshot, summary });
 
-  // Seed 30 days of 12-hourly summaries so charts are useful in demo mode.
+  const marketPoints = extractMarketPoints(raw, carrierId, accountId, now);
+  const cargoPoints = extractCargoPoints(raw, carrierId, accountId, now);
+  await putMarketPoints(marketPoints);
+  await putCargoPoints(cargoPoints);
+
+  // Seed 30 days of 12-hourly summaries and item history so charts are useful.
   for (let step = 60; step >= 1; step -= 1) {
     const fetchedAt = now - step * 12 * 60 * 60 * 1000;
     const historyRaw = demoCarrierResponse(accountId, fetchedAt, 60 - step);
@@ -319,6 +331,12 @@ export async function createDemoAccount(
       metrics: summarizeCarrier(historyRaw),
     };
     await putSummaryIfAbsent(historySummary);
+    await putMarketPoints(
+      extractMarketPoints(historyRaw, carrierId, accountId, fetchedAt),
+    );
+    await putCargoPoints(
+      extractCargoPoints(historyRaw, carrierId, accountId, fetchedAt),
+    );
   }
 
   return account;

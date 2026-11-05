@@ -1,7 +1,11 @@
 import { getDb } from './db';
 import type {
   AccountRecord,
+  CargoDay,
+  CargoPoint,
   CarrierRecord,
+  MarketDay,
+  MarketPoint,
   MetaRecord,
   SnapshotRecord,
   SummaryRecord,
@@ -15,6 +19,18 @@ function accountTimeRange(accountId: string, from = 0, to = MAX_TIME): IDBKeyRan
 
 function carrierTimeRange(carrierId: string, from = 0, to = MAX_TIME): IDBKeyRange {
   return IDBKeyRange.bound([carrierId, from], [carrierId, to]);
+}
+
+function carrierCommodityTimeRange(
+  carrierId: string,
+  commodityKey: string,
+  from = 0,
+  to = MAX_TIME,
+): IDBKeyRange {
+  return IDBKeyRange.bound(
+    [carrierId, commodityKey, from],
+    [carrierId, commodityKey, to],
+  );
 }
 
 export async function listAccounts(): Promise<AccountRecord[]> {
@@ -35,7 +51,19 @@ export async function saveAccount(account: AccountRecord): Promise<void> {
 
 export async function deleteAccount(id: string): Promise<void> {
   const db = await getDb();
-  const tx = db.transaction(['accounts', 'carriers', 'snapshots', 'summaries'], 'readwrite');
+  const tx = db.transaction(
+    [
+      'accounts',
+      'carriers',
+      'snapshots',
+      'summaries',
+      'marketPoints',
+      'cargoPoints',
+      'marketDays',
+      'cargoDays',
+    ],
+    'readwrite',
+  );
   await tx.objectStore('accounts').delete(id);
 
   const carriers = tx.objectStore('carriers').index('by-account');
@@ -57,6 +85,20 @@ export async function deleteAccount(id: string): Promise<void> {
   while (summaryCursor) {
     await summaryCursor.delete();
     summaryCursor = await summaryCursor.continue();
+  }
+
+  for (const storeName of [
+    'marketPoints',
+    'cargoPoints',
+    'marketDays',
+    'cargoDays',
+  ] as const) {
+    const index = tx.objectStore(storeName).index('by-account');
+    let cursor = await index.openCursor(IDBKeyRange.only(id));
+    while (cursor) {
+      await cursor.delete();
+      cursor = await cursor.continue();
+    }
   }
 
   await tx.done;
@@ -218,19 +260,244 @@ export async function putSummaryIfAbsent(summary: SummaryRecord): Promise<boolea
   }
 }
 
+export async function marketPointsForCarrier(
+  carrierId: string,
+  from = 0,
+  to = MAX_TIME,
+): Promise<MarketPoint[]> {
+  const db = await getDb();
+  return db.getAllFromIndex(
+    'marketPoints',
+    'by-carrier-time',
+    carrierTimeRange(carrierId, from, to),
+  );
+}
+
+export async function cargoPointsForCarrier(
+  carrierId: string,
+  from = 0,
+  to = MAX_TIME,
+): Promise<CargoPoint[]> {
+  const db = await getDb();
+  return db.getAllFromIndex(
+    'cargoPoints',
+    'by-carrier-time',
+    carrierTimeRange(carrierId, from, to),
+  );
+}
+
+export async function marketDaysForCarrier(
+  carrierId: string,
+  from = 0,
+  to = MAX_TIME,
+): Promise<MarketDay[]> {
+  const db = await getDb();
+  return db.getAllFromIndex(
+    'marketDays',
+    'by-carrier-day',
+    carrierTimeRange(carrierId, from, to),
+  );
+}
+
+export async function cargoDaysForCarrier(
+  carrierId: string,
+  from = 0,
+  to = MAX_TIME,
+): Promise<CargoDay[]> {
+  const db = await getDb();
+  return db.getAllFromIndex(
+    'cargoDays',
+    'by-carrier-day',
+    carrierTimeRange(carrierId, from, to),
+  );
+}
+
+export async function marketPointsForCommodity(
+  carrierId: string,
+  commodityKey: string,
+  from = 0,
+  to = MAX_TIME,
+): Promise<MarketPoint[]> {
+  const db = await getDb();
+  return db.getAllFromIndex(
+    'marketPoints',
+    'by-carrier-commodity-time',
+    carrierCommodityTimeRange(carrierId, commodityKey, from, to),
+  );
+}
+
+export async function cargoPointsForCommodity(
+  carrierId: string,
+  commodityKey: string,
+  from = 0,
+  to = MAX_TIME,
+): Promise<CargoPoint[]> {
+  const db = await getDb();
+  return db.getAllFromIndex(
+    'cargoPoints',
+    'by-carrier-commodity-time',
+    carrierCommodityTimeRange(carrierId, commodityKey, from, to),
+  );
+}
+
+export async function marketDaysForCommodity(
+  carrierId: string,
+  commodityKey: string,
+  from = 0,
+  to = MAX_TIME,
+): Promise<MarketDay[]> {
+  const db = await getDb();
+  return db.getAllFromIndex(
+    'marketDays',
+    'by-carrier-commodity-day',
+    carrierCommodityTimeRange(carrierId, commodityKey, from, to),
+  );
+}
+
+export async function cargoDaysForCommodity(
+  carrierId: string,
+  commodityKey: string,
+  from = 0,
+  to = MAX_TIME,
+): Promise<CargoDay[]> {
+  const db = await getDb();
+  return db.getAllFromIndex(
+    'cargoDays',
+    'by-carrier-commodity-day',
+    carrierCommodityTimeRange(carrierId, commodityKey, from, to),
+  );
+}
+
+export async function allMarketPoints(): Promise<MarketPoint[]> {
+  const db = await getDb();
+  return db.getAll('marketPoints');
+}
+
+export async function allCargoPoints(): Promise<CargoPoint[]> {
+  const db = await getDb();
+  return db.getAll('cargoPoints');
+}
+
+export async function allMarketDays(): Promise<MarketDay[]> {
+  const db = await getDb();
+  return db.getAll('marketDays');
+}
+
+export async function allCargoDays(): Promise<CargoDay[]> {
+  const db = await getDb();
+  return db.getAll('cargoDays');
+}
+
+export async function putMarketPoints(points: MarketPoint[]): Promise<void> {
+  if (!points.length) return;
+  const db = await getDb();
+  const tx = db.transaction('marketPoints', 'readwrite');
+  await Promise.all(points.map((point) => tx.store.put(point)));
+  await tx.done;
+}
+
+export async function putCargoPoints(points: CargoPoint[]): Promise<void> {
+  if (!points.length) return;
+  const db = await getDb();
+  const tx = db.transaction('cargoPoints', 'readwrite');
+  await Promise.all(points.map((point) => tx.store.put(point)));
+  await tx.done;
+}
+
+export async function putMarketPointIfAbsent(point: MarketPoint): Promise<boolean> {
+  const db = await getDb();
+  try {
+    await db.add('marketPoints', point);
+    return true;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'ConstraintError') return false;
+    throw error;
+  }
+}
+
+export async function putCargoPointIfAbsent(point: CargoPoint): Promise<boolean> {
+  const db = await getDb();
+  try {
+    await db.add('cargoPoints', point);
+    return true;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'ConstraintError') return false;
+    throw error;
+  }
+}
+
+export async function putMarketDays(days: MarketDay[]): Promise<void> {
+  if (!days.length) return;
+  const db = await getDb();
+  const tx = db.transaction('marketDays', 'readwrite');
+  await Promise.all(days.map((day) => tx.store.put(day)));
+  await tx.done;
+}
+
+export async function putCargoDays(days: CargoDay[]): Promise<void> {
+  if (!days.length) return;
+  const db = await getDb();
+  const tx = db.transaction('cargoDays', 'readwrite');
+  await Promise.all(days.map((day) => tx.store.put(day)));
+  await tx.done;
+}
+
+export async function deleteMarketPoints(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  const db = await getDb();
+  const tx = db.transaction('marketPoints', 'readwrite');
+  await Promise.all(ids.map((id) => tx.store.delete(id)));
+  await tx.done;
+}
+
+export async function deleteCargoPoints(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  const db = await getDb();
+  const tx = db.transaction('cargoPoints', 'readwrite');
+  await Promise.all(ids.map((id) => tx.store.delete(id)));
+  await tx.done;
+}
+
+export async function deleteMarketDays(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  const db = await getDb();
+  const tx = db.transaction('marketDays', 'readwrite');
+  await Promise.all(ids.map((id) => tx.store.delete(id)));
+  await tx.done;
+}
+
+export async function deleteCargoDays(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  const db = await getDb();
+  const tx = db.transaction('cargoDays', 'readwrite');
+  await Promise.all(ids.map((id) => tx.store.delete(id)));
+  await tx.done;
+}
+
 export async function commitSnapshotBundle(input: {
   account: AccountRecord;
   carrier: CarrierRecord;
   snapshot: SnapshotRecord;
   summary: SummaryRecord;
+  marketPoints?: MarketPoint[];
+  cargoPoints?: CargoPoint[];
 }): Promise<void> {
   const db = await getDb();
-  const tx = db.transaction(['accounts', 'carriers', 'snapshots', 'summaries'], 'readwrite');
+  const tx = db.transaction(
+    ['accounts', 'carriers', 'snapshots', 'summaries', 'marketPoints', 'cargoPoints'],
+    'readwrite',
+  );
   await Promise.all([
     tx.objectStore('accounts').put(input.account),
     tx.objectStore('carriers').put(input.carrier),
     tx.objectStore('snapshots').put(input.snapshot),
     tx.objectStore('summaries').put(input.summary),
+    ...(input.marketPoints ?? []).map((point) =>
+      tx.objectStore('marketPoints').put(point),
+    ),
+    ...(input.cargoPoints ?? []).map((point) =>
+      tx.objectStore('cargoPoints').put(point),
+    ),
   ]);
   await tx.done;
 }
@@ -249,12 +516,28 @@ export async function setMeta(key: string, value: unknown): Promise<void> {
 
 export async function clearDataStores(): Promise<void> {
   const db = await getDb();
-  const tx = db.transaction(['accounts', 'carriers', 'snapshots', 'summaries'], 'readwrite');
+  const tx = db.transaction(
+    [
+      'accounts',
+      'carriers',
+      'snapshots',
+      'summaries',
+      'marketPoints',
+      'cargoPoints',
+      'marketDays',
+      'cargoDays',
+    ],
+    'readwrite',
+  );
   await Promise.all([
     tx.objectStore('accounts').clear(),
     tx.objectStore('carriers').clear(),
     tx.objectStore('snapshots').clear(),
     tx.objectStore('summaries').clear(),
+    tx.objectStore('marketPoints').clear(),
+    tx.objectStore('cargoPoints').clear(),
+    tx.objectStore('marketDays').clear(),
+    tx.objectStore('cargoDays').clear(),
   ]);
   await tx.done;
 }

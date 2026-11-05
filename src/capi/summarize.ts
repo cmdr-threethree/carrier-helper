@@ -57,10 +57,8 @@ export function summarizeCarrier(data: FleetCarrierResponse): SummaryMetrics {
 
   const cargo = Array.isArray(data.cargo) ? data.cargo : [];
   const cargoTotalQty = cargo.reduce((sum, line) => sum + num(line?.qty), 0);
-  const cargoTotalValue = cargo.reduce(
-    (sum, line) => sum + num(line?.value) * Math.max(1, num(line?.qty)),
-    0,
-  );
+  // CAPI cargo[].value is the total value of the line, not the unit price.
+  const cargoTotalValue = cargo.reduce((sum, line) => sum + num(line?.value), 0);
 
   const orders = data.orders?.commodities;
   const microOrders = data.orders?.onfootmicroresources;

@@ -72,7 +72,7 @@ describe('carrier summary', () => {
     expect(summary.capacity.total).toBe(1_000);
     expect(summary.market.allTimeProfit).toBe(300);
     expect(summary.cargo.totalQty).toBe(5);
-    expect(summary.cargo.totalValue).toBe(350);
+    expect(summary.cargo.totalValue).toBe(150);
     expect(summary.orders).toEqual({
       sales: 1,
       purchases: 2,
@@ -138,7 +138,7 @@ describe('carrier summary', () => {
     expect(summary.market.cargoTotalValue).toBe(306_055_713);
     expect(summary.market.allTimeProfit).toBe(15_884_252_863);
     expect(summary.cargo.totalQty).toBe(24_843);
-    expect(summary.cargo.totalValue).toBe(5_885_553_095_559);
+    expect(summary.cargo.totalValue).toBe(306_055_713);
     expect(summary.orders.sales).toBe(2);
     expect(summary.totalDistanceLY).toBe(5_927);
     expect(summary.itinerary[0]?.visitDurationSeconds).toBe(792_783);

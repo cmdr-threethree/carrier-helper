@@ -7,7 +7,10 @@ import { el } from './ui/dom';
 import { emptyState } from './ui/layout';
 import { startRouter } from './ui/router';
 import { showToast } from './ui/components/toast';
+import { backfillItemHistory } from './storage/backfill';
 import { applyRetention } from './storage/retention';
+import { invalidateStorageBreakdown } from './storage/stats';
+import { RERENDER_EVENT } from './ui/events';
 
 function authErrorPage(error: unknown): HTMLElement {
   return el(
@@ -57,7 +60,19 @@ async function bootstrap(): Promise<void> {
   }
 
   startRouter();
-  void applyRetention().catch((error: unknown) => log.warn('Startup retention failed', error));
+  void applyRetention()
+    .then(async () => {
+      await invalidateStorageBreakdown();
+      return backfillItemHistory();
+    })
+    .then(async (count) => {
+      if (count > 0) {
+        log.info(`Backfilled ${count} item history records.`);
+        await invalidateStorageBreakdown();
+        window.dispatchEvent(new Event(RERENDER_EVENT));
+      }
+    })
+    .catch((error: unknown) => log.warn('Startup history maintenance failed', error));
 }
 
 window.addEventListener('unhandledrejection', (event) => {

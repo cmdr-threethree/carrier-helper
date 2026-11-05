@@ -1,14 +1,18 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type {
   AccountRecord,
+  CargoDay,
+  CargoPoint,
   CarrierRecord,
+  MarketDay,
+  MarketPoint,
   MetaRecord,
   SnapshotRecord,
   SummaryRecord,
 } from './schema';
 
 export const DB_NAME = 'carrier-helper';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export interface CarrierDB extends DBSchema {
   accounts: {
@@ -45,6 +49,46 @@ export interface CarrierDB extends DBSchema {
       'by-time': number;
     };
   };
+  marketPoints: {
+    key: string;
+    value: MarketPoint;
+    indexes: {
+      'by-account': string;
+      'by-carrier-time': [string, number];
+      'by-carrier-commodity-time': [string, string, number];
+      'by-time': number;
+    };
+  };
+  cargoPoints: {
+    key: string;
+    value: CargoPoint;
+    indexes: {
+      'by-account': string;
+      'by-carrier-time': [string, number];
+      'by-carrier-commodity-time': [string, string, number];
+      'by-time': number;
+    };
+  };
+  marketDays: {
+    key: string;
+    value: MarketDay;
+    indexes: {
+      'by-account': string;
+      'by-carrier-day': [string, number];
+      'by-carrier-commodity-day': [string, string, number];
+      'by-day': number;
+    };
+  };
+  cargoDays: {
+    key: string;
+    value: CargoDay;
+    indexes: {
+      'by-account': string;
+      'by-carrier-day': [string, number];
+      'by-carrier-commodity-day': [string, string, number];
+      'by-day': number;
+    };
+  };
   meta: {
     key: string;
     value: MetaRecord;
@@ -79,6 +123,48 @@ export function getDb(): Promise<IDBPDatabase<CarrierDB>> {
           summaries.createIndex('by-time', 'fetchedAt');
 
           db.createObjectStore('meta', { keyPath: 'key' });
+        }
+
+        if (oldVersion < 2) {
+          const marketPoints = db.createObjectStore('marketPoints', { keyPath: 'id' });
+          marketPoints.createIndex('by-account', 'accountId');
+          marketPoints.createIndex('by-carrier-time', ['carrierId', 'fetchedAt']);
+          marketPoints.createIndex('by-carrier-commodity-time', [
+            'carrierId',
+            'commodityKey',
+            'fetchedAt',
+          ]);
+          marketPoints.createIndex('by-time', 'fetchedAt');
+
+          const cargoPoints = db.createObjectStore('cargoPoints', { keyPath: 'id' });
+          cargoPoints.createIndex('by-account', 'accountId');
+          cargoPoints.createIndex('by-carrier-time', ['carrierId', 'fetchedAt']);
+          cargoPoints.createIndex('by-carrier-commodity-time', [
+            'carrierId',
+            'commodityKey',
+            'fetchedAt',
+          ]);
+          cargoPoints.createIndex('by-time', 'fetchedAt');
+
+          const marketDays = db.createObjectStore('marketDays', { keyPath: 'id' });
+          marketDays.createIndex('by-account', 'accountId');
+          marketDays.createIndex('by-carrier-day', ['carrierId', 'dayStart']);
+          marketDays.createIndex('by-carrier-commodity-day', [
+            'carrierId',
+            'commodityKey',
+            'dayStart',
+          ]);
+          marketDays.createIndex('by-day', 'dayStart');
+
+          const cargoDays = db.createObjectStore('cargoDays', { keyPath: 'id' });
+          cargoDays.createIndex('by-account', 'accountId');
+          cargoDays.createIndex('by-carrier-day', ['carrierId', 'dayStart']);
+          cargoDays.createIndex('by-carrier-commodity-day', [
+            'carrierId',
+            'commodityKey',
+            'dayStart',
+          ]);
+          cargoDays.createIndex('by-day', 'dayStart');
         }
       },
       blocked() {

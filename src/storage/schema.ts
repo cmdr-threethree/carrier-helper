@@ -63,6 +63,118 @@ export interface MetaRecord {
   value: unknown;
 }
 
+export interface SeriesStats {
+  first: number;
+  last: number;
+  min: number;
+  max: number;
+  avg: number;
+  sum: number;
+}
+
+export interface MarketPoint {
+  id: string;
+  carrierId: string;
+  accountId: string;
+  fetchedAt: number;
+  commodityKey: string;
+  commodityId?: number;
+  name: string;
+  locName?: string;
+  category?: string;
+
+  stock: number;
+  buyPrice: number;
+  sellPrice: number;
+  meanPrice: number;
+  demand: number;
+  stockBracket: number;
+  demandBracket: number;
+
+  hasSaleOrder: boolean;
+  saleStock: number;
+  salePrice: number;
+  saleOrderValue: number;
+
+  hasPurchaseOrder: boolean;
+  purchaseOutstanding: number;
+  purchasePrice: number;
+  purchaseOrderValue: number;
+
+  size: number;
+}
+
+export interface CargoPoint {
+  id: string;
+  carrierId: string;
+  accountId: string;
+  fetchedAt: number;
+  commodityKey: string;
+  name: string;
+  locName?: string;
+
+  qty: number;
+  value: number;
+  unitValue: number;
+
+  hasStolen: boolean;
+  hasMission: boolean;
+
+  size: number;
+}
+
+export interface MarketDay {
+  id: string;
+  carrierId: string;
+  accountId: string;
+  commodityKey: string;
+  commodityId?: number;
+  name: string;
+  locName?: string;
+  category?: string;
+  dayStart: number;
+  samples: number;
+  firstFetchedAt: number;
+  lastFetchedAt: number;
+
+  stock: SeriesStats;
+  demand: SeriesStats;
+  buyPrice: SeriesStats;
+  sellPrice: SeriesStats;
+  meanPrice: SeriesStats;
+
+  saleSamples: number;
+  saleStock: SeriesStats;
+  salePrice: SeriesStats;
+  saleOrderValue: SeriesStats;
+
+  purchaseSamples: number;
+  purchaseOutstanding: SeriesStats;
+  purchasePrice: SeriesStats;
+  purchaseOrderValue: SeriesStats;
+
+  size: number;
+}
+
+export interface CargoDay {
+  id: string;
+  carrierId: string;
+  accountId: string;
+  commodityKey: string;
+  name: string;
+  locName?: string;
+  dayStart: number;
+  samples: number;
+  firstFetchedAt: number;
+  lastFetchedAt: number;
+
+  qty: SeriesStats;
+  value: SeriesStats;
+  unitValue: SeriesStats;
+
+  size: number;
+}
+
 export function emptySyncState(): SyncState {
   return {
     lastAttemptAt: undefined,

@@ -115,6 +115,115 @@ h3 {
   letter-spacing: 0.03em;
 }
 
+.inline-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.inline-field select {
+  max-width: 220px;
+  padding: 7px 30px 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-soft);
+  background: var(--panel);
+}
+
+.history-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.compact-segments .segment {
+  padding: 5px 9px;
+  font-size: 0.75rem;
+}
+
+.search-input {
+  max-width: 320px;
+  margin-bottom: 10px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 2px 0 8px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.legend-color-0 {
+  background: var(--accent);
+}
+
+.legend-color-1 {
+  background: var(--cyan);
+}
+
+.legend-color-2 {
+  background: var(--green);
+}
+
+.legend-color-3 {
+  background: var(--violet);
+}
+
+.legend-color-4 {
+  background: #f472b6;
+}
+
+.legend-color-5 {
+  background: var(--faint);
+}
+
+.legend-color-6 {
+  background: #facc15;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.selected-row {
+  background: rgba(255, 122, 24, 0.1);
+}
+
+.selected-row td {
+  color: var(--text);
+}
+
 /* Header ------------------------------------------------------------------ */
 
 .site-header {
@@ -810,6 +919,10 @@ h3 {
   border-radius: var(--radius);
   background: linear-gradient(180deg, rgba(23, 32, 43, 0.8), rgba(17, 24, 33, 0.92));
   box-shadow: var(--shadow);
+}
+
+.chart-grid > .span-two {
+  grid-column: 1 / -1;
 }
 
 .chart-card-head {

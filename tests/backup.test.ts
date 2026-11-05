@@ -8,11 +8,14 @@ import {
   getAccount,
   latestSnapshotForCarrier,
   listAccounts,
+  marketPointsForCarrier,
+  putMarketPoints,
   putSnapshotIfAbsent,
   putSummaryIfAbsent,
   saveAccount,
   saveCarrier,
 } from '../src/storage/repos';
+import type { MarketPoint } from '../src/storage/schema';
 import { makeAccount, makeCarrier, makeSnapshot, makeSummary } from './helpers';
 
 describe('backup export and import', () => {
@@ -70,6 +73,53 @@ describe('backup export and import', () => {
     expect(await listAccounts()).toHaveLength(1);
   });
 
+  it('exports and imports v2 item history', async () => {
+    const account = makeAccount();
+    const carrier = makeCarrier();
+    await saveAccount(account);
+    await saveCarrier(carrier);
+    const fetchedAt = Date.now();
+    const point: MarketPoint = {
+      id: `${carrier.id}:gold:${fetchedAt}`,
+      carrierId: carrier.id,
+      accountId: account.id,
+      fetchedAt,
+      commodityKey: 'gold',
+      name: 'gold',
+      locName: 'Gold',
+      category: 'Metals',
+      stock: 10,
+      buyPrice: 100,
+      sellPrice: 110,
+      meanPrice: 105,
+      demand: 20,
+      stockBracket: 1,
+      demandBracket: 1,
+      hasSaleOrder: true,
+      saleStock: 10,
+      salePrice: 110,
+      saleOrderValue: 1_100,
+      hasPurchaseOrder: false,
+      purchaseOutstanding: 0,
+      purchasePrice: 0,
+      purchaseOrderValue: 0,
+      size: 200,
+    };
+    await putMarketPoints([point]);
+
+    const backup = await exportAllData();
+    expect(backup.schemaVersion).toBe(2);
+    expect(backup.marketPoints).toHaveLength(1);
+    expect(backup.cargoPoints).toEqual([]);
+
+    await clearDataStores();
+    await importBackup(backup, 'merge');
+    const points = await marketPointsForCarrier(carrier.id);
+    expect(points).toHaveLength(1);
+    expect(points[0]?.commodityKey).toBe('gold');
+    expect(points[0]?.salePrice).toBe(110);
+  });
+
   it('remaps an imported carrier to an existing local carrier with the same callsign', async () => {
     const carrier = makeCarrier();
     await saveAccount(makeAccount());
@@ -116,7 +166,7 @@ describe('backup export and import', () => {
   it('rejects unsupported backup versions', () => {
     const result = safeValidateBackup({
       app: 'carrier-helper',
-      schemaVersion: 2,
+      schemaVersion: 3,
       exportedAt: 1,
       accounts: [],
       carriers: [],

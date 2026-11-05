@@ -22,10 +22,16 @@ Pages Function forwards only `GET /fleetcarrier` and adds no application state.
   plus the local CMDR label for each account
 - Carrier detail views: history, market and orders, finances, cargo, itinerary,
   service crew, raw JSON
-- Carrier-scoped History tab with 7/30/90-day range controls
-- 7 days of raw snapshots (latest per carrier always kept) and 90 days of
-  trend summaries
-- Balance, fuel, free-space, and market-profit charts
+- Carrier-scoped History tab with 7/30/90/365-day ranges
+- Per-commodity market and cargo history:
+  - top 5 commodities plus “Other”
+  - buy/sell order history
+  - price, stock, demand, cargo quantity, and cargo value charts
+  - searchable full commodity tables
+- 7 days of raw snapshots (latest per carrier always kept), 90 days of trend
+  summaries, 30 days of item points, and 365 days of daily item rollups
+- Balance, fuel, free-space, market-profit, market-item, and cargo-item charts
+- IndexedDB storage breakdown in Settings
 - Versioned JSON import/export; tokens are never exported
 - Dark, responsive UI with no UI framework
 
@@ -170,15 +176,23 @@ IndexedDB database `carrier-helper`:
 - `carriers` — callsign, decoded name, system, last snapshot
 - `snapshots` — full raw CAPI JSON
 - `summaries` — small chart-friendly metrics
-- `meta` — schema metadata
+- `marketPoints` / `cargoPoints` — per-commodity snapshots
+- `marketDays` / `cargoDays` — daily rollups
+- `meta` — schema metadata and caches
 
 Retention runs on startup and after each sync:
 
 - Summaries older than 90 days are deleted.
 - Raw snapshots older than 7 days are deleted, except the latest raw snapshot
   for each carrier.
+- Item points older than 30 days are rolled into daily records and deleted.
+- Daily item rollups older than 365 days are deleted.
 - Raw storage is capped at roughly 100 MB, dropping the oldest unprotected
   snapshots first.
+
+Settings shows browser usage, per-store record counts, estimated store sizes,
+and retention periods. The breakdown is cached; a manual recalculation button
+is available.
 
 `navigator.storage.persist()` can be requested from Settings. Browsers may
 still evict local data, so export backups regularly.
@@ -186,11 +200,14 @@ still evict local data, so export backups regularly.
 ### Backups
 
 Export creates a versioned JSON file containing accounts (without tokens),
-carriers, snapshots, and summaries. Tokens are excluded by the export schema
-itself, and token fields in imported files are stripped.
+carriers, snapshots, summaries, market/cargo points, and daily rollups. Tokens
+are excluded by the export schema itself, and token fields in imported files
+are stripped. Version 1 backups remain importable and are upgraded on import.
 
 Imported accounts start as “reconnect required” and cooldowns reset to zero.
 Import supports merge (deduplicate by account ID and snapshot UUID) or replace.
+Item history is derived from imported raw snapshots when a backup does not
+contain it.
 
 ## Privacy and security
 
@@ -247,9 +264,10 @@ src/
   auth/       PKCE, OAuth callback, token refresh, account management
   backup/     versioned export, import, zod validation
   capi/       CAPI client, types, summaries, cooldown
+  history/    market/cargo analytics, ranking, chart series
   lib/        errors, formatting, time, hex decoding, logging
   mock/       generated demo accounts and 30-day history
-  storage/    IndexedDB schema, repositories, retention
+  storage/    IndexedDB schema, repositories, retention, stats
   ui/         DOM helpers, router, pages, components, layout
   sync.ts     per-account lock, cooldown, fetch, snapshot persistence
 functions/

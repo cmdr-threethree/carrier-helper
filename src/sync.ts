@@ -1,6 +1,7 @@
 import { ensureFreshAccessToken, refreshAccountTokens } from './auth/tokens';
 import { fetchFleetCarrier } from './capi/client';
 import { reserveSyncSlot, cooldownRemaining, nextAllowedAfterRateLimit } from './capi/cooldown';
+import { extractCargoPoints, extractMarketPoints } from './capi/extract';
 import { summarizeCarrier } from './capi/summarize';
 import type { FleetCarrierResponse, SummaryMetrics } from './capi/types';
 import { config } from './config';
@@ -104,6 +105,9 @@ async function persistSnapshot(
   };
   carrier.lastSnapshotId = snapshot.id;
 
+  const marketPoints = extractMarketPoints(raw, carrierId, account.id, now);
+  const cargoPoints = extractCargoPoints(raw, carrierId, account.id, now);
+
   const summary: SummaryRecord = {
     id: crypto.randomUUID(),
     accountId: account.id,
@@ -129,6 +133,8 @@ async function persistSnapshot(
       carrier,
       snapshot,
       summary,
+      marketPoints,
+      cargoPoints,
     });
   } catch (error) {
     if (!isQuotaError(error)) throw error;
@@ -139,6 +145,8 @@ async function persistSnapshot(
         carrier,
         snapshot,
         summary,
+        marketPoints,
+        cargoPoints,
       });
     } catch (retryError) {
       if (isQuotaError(retryError)) {

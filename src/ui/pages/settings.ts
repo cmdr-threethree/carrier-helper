@@ -9,15 +9,17 @@ import {
 import { connectAccountWithPrompt, renameAccountWithPrompt } from '../account-actions';
 import { importBackup, parseBackupFile, previewBackup, type ImportMode } from '../../backup/import';
 import { downloadBackup, exportAllData } from '../../backup/export';
-import type { BackupV1 } from '../../backup/validate';
+import type { Backup } from '../../backup/validate';
 import { configurationProblem, config } from '../../config';
 import { userMessage } from '../../lib/errors';
-import { formatBytes } from '../../lib/format';
+import { formatBytes, formatNumber } from '../../lib/format';
 import { formatDateTime, formatRelative } from '../../lib/time';
-import { clearDataStores, listAccounts, storageUsage } from '../../storage/repos';
+import { clearDataStores, listAccounts } from '../../storage/repos';
+import { getStorageBreakdown, invalidateStorageBreakdown } from '../../storage/stats';
 import { el, type Child } from '../dom';
 import { requestRender } from '../events';
 import { badge, infoGrid, pageHeader, section } from '../layout';
+import { dataTable } from '../components/table';
 import { showToast } from '../components/toast';
 import type { AccountRecord } from '../../storage/schema';
 import type { PageContext, PageResult } from './types';
@@ -92,6 +94,7 @@ function accountActions(account: AccountRecord): Child[] {
           click: () => {
             if (!window.confirm(`Delete ${accountLabel(account)} and all of its carrier history? This cannot be undone.`)) return;
             void deleteAccountData(account.id)
+              .then(() => invalidateStorageBreakdown())
               .then(() => {
                 showToast('Account data deleted.', 'success');
                 requestRender();
@@ -162,8 +165,19 @@ function configSection(): HTMLElement {
   );
 }
 
+const STORE_LABELS: Record<string, string> = {
+  accounts: 'Accounts',
+  carriers: 'Carriers',
+  snapshots: 'Raw snapshots',
+  summaries: 'Summaries',
+  marketPoints: 'Market points',
+  cargoPoints: 'Cargo points',
+  marketDays: 'Market days',
+  cargoDays: 'Cargo days',
+};
+
 async function storageSection(): Promise<HTMLElement> {
-  const usage = await storageUsage();
+  const breakdown = await getStorageBreakdown();
   let quotaText = 'Not available';
   let persistedText = 'Not available';
   try {
@@ -177,6 +191,25 @@ async function storageSection(): Promise<HTMLElement> {
   } catch {
     // Storage APIs are optional.
   }
+
+  const refreshStatsButton = el(
+    'button',
+    {
+      class: 'btn btn-ghost btn-small',
+      type: 'button',
+      on: {
+        click: () => {
+          void getStorageBreakdown(true)
+            .then(() => {
+              showToast('Storage statistics refreshed.', 'success');
+              requestRender();
+            })
+            .catch((error: unknown) => showToast(userMessage(error), 'error'));
+        },
+      },
+    },
+    'Recalculate storage stats',
+  );
 
   const exportAllButton = el(
     'button',
@@ -198,7 +231,7 @@ async function storageSection(): Promise<HTMLElement> {
   );
 
   const preview = el('p', { class: 'muted small' }, 'No backup file selected.');
-  let pending: BackupV1 | null = null;
+  let pending: Backup | null = null;
   let pendingName = '';
 
   const mergeButton = el(
@@ -219,8 +252,9 @@ async function storageSection(): Promise<HTMLElement> {
     }
     try {
       const result = await importBackup(pending, mode);
+      await invalidateStorageBreakdown();
       showToast(
-        `Import complete: ${result.importedAccounts} accounts, ${result.importedCarriers} carriers, ${result.importedSnapshots} snapshots, ${result.importedSummaries} summaries.`,
+        `Import complete: ${result.importedAccounts} accounts, ${result.importedCarriers} carriers, ${result.importedSnapshots} snapshots, ${result.importedSummaries} summaries, ${result.importedMarketPoints + result.importedCargoPoints} item points.`,
         'success',
       );
       requestRender();
@@ -253,7 +287,7 @@ async function storageSection(): Promise<HTMLElement> {
             pending = backup;
             pendingName = file.name;
             const counts = previewBackup(backup);
-            preview.textContent = `${pendingName}: ${counts.accounts} accounts, ${counts.carriers} carriers, ${counts.snapshots} snapshots, ${counts.summaries} summaries${
+            preview.textContent = `${pendingName}: ${counts.accounts} accounts, ${counts.carriers} carriers, ${counts.snapshots} snapshots, ${counts.summaries} summaries, ${counts.marketPoints + counts.cargoPoints} item points, ${counts.marketDays + counts.cargoDays} daily rollups${
               counts.earliest ? `, ${formatDateTime(counts.earliest)} to ${formatDateTime(counts.latest)}` : ''
             }.`;
             mergeButton.disabled = false;
@@ -290,19 +324,41 @@ async function storageSection(): Promise<HTMLElement> {
     'Request persistent storage',
   );
 
+  const storeRows = (Object.keys(STORE_LABELS) as Array<keyof typeof breakdown.stores>).map(
+    (key) => {
+      const store = breakdown.stores[key];
+      return [
+        STORE_LABELS[key] ?? key,
+        formatNumber(store.count),
+        formatBytes(store.bytes),
+        store.retention,
+      ];
+    },
+  );
+
   return section(
     'Storage and data',
     infoGrid([
-      ['Accounts', String(usage.accountCount)],
-      ['Carriers', String(usage.carrierCount)],
-      ['Raw snapshots', `${usage.snapshotCount} · ${formatBytes(usage.snapshotBytes)}`],
-      ['Summaries', String(usage.summaryCount)],
       ['Browser quota used', quotaText],
+      ['IndexedDB estimate', formatBytes(breakdown.totalBytes)],
       ['Persistent storage', persistedText],
-      ['Retention', 'Raw 7 days (latest kept); summaries 90 days'],
       ['Raw snapshot cap', formatBytes(config.rawStorageCapBytes)],
     ]),
-    el('div', { class: 'button-row' }, exportAllButton, persistenceButton),
+    el(
+      'p',
+      { class: 'muted small' },
+      `IndexedDB breakdown · calculated ${formatRelative(breakdown.generatedAt)}`,
+    ),
+    dataTable(['Store', 'Records', 'Estimated size', 'Retention'], storeRows, {
+      compact: true,
+    }),
+    el(
+      'div',
+      { class: 'button-row' },
+      exportAllButton,
+      persistenceButton,
+      refreshStatsButton,
+    ),
     el(
       'div',
       { class: 'import-box' },
@@ -326,6 +382,7 @@ async function storageSection(): Promise<HTMLElement> {
             click: () => {
               if (!window.confirm('Delete all Carrier Helper data in this browser? This cannot be undone.')) return;
               void clearDataStores()
+                .then(() => invalidateStorageBreakdown())
                 .then(() => {
                   showToast('All local data deleted.', 'success');
                   requestRender();

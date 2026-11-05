@@ -1,17 +1,39 @@
 import type {
   AccountRecord,
+  CargoDay,
+  CargoPoint,
   CarrierRecord,
+  MarketDay,
+  MarketPoint,
   SnapshotRecord,
   SummaryRecord,
 } from '../storage/schema';
 import {
+  allCargoDays,
+  allCargoPoints,
+  allMarketDays,
+  allMarketPoints,
   allSnapshots,
   allSummaries,
   listAccounts,
   listAllCarriers,
+  marketDaysForCarrier,
+  marketPointsForCarrier,
+  cargoDaysForCarrier,
+  cargoPointsForCarrier,
   snapshotsForCarrier,
 } from '../storage/repos';
-import type { BackupAccount, BackupCarrier, BackupSnapshot, BackupSummary, BackupV1 } from './validate';
+import type {
+  Backup,
+  BackupAccount,
+  BackupCargoDay,
+  BackupCargoPoint,
+  BackupCarrier,
+  BackupMarketDay,
+  BackupMarketPoint,
+  BackupSnapshot,
+  BackupSummary,
+} from './validate';
 
 function exportAccount(account: AccountRecord): BackupAccount {
   return {
@@ -58,28 +80,61 @@ function exportSummary(summary: SummaryRecord): BackupSummary {
   };
 }
 
-export async function exportAllData(): Promise<BackupV1> {
-  const [accounts, carriers, snapshots, summaries] = await Promise.all([
+function exportMarketPoint(point: MarketPoint): BackupMarketPoint {
+  return { ...point, size: point.size };
+}
+
+function exportCargoPoint(point: CargoPoint): BackupCargoPoint {
+  return { ...point, size: point.size };
+}
+
+function exportMarketDay(day: MarketDay): BackupMarketDay {
+  return { ...day, size: day.size };
+}
+
+function exportCargoDay(day: CargoDay): BackupCargoDay {
+  return { ...day, size: day.size };
+}
+
+export async function exportAllData(): Promise<Backup> {
+  const [
+    accounts,
+    carriers,
+    snapshots,
+    summaries,
+    marketPoints,
+    cargoPoints,
+    marketDays,
+    cargoDays,
+  ] = await Promise.all([
     listAccounts(),
     listAllCarriers(),
     allSnapshots(),
     allSummaries(),
+    allMarketPoints(),
+    allCargoPoints(),
+    allMarketDays(),
+    allCargoDays(),
   ]);
   return {
     app: 'carrier-helper',
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: Date.now(),
     accounts: accounts.map(exportAccount),
     carriers: carriers.map(exportCarrier),
     snapshots: snapshots.map(exportSnapshot),
     summaries: summaries.map(exportSummary),
+    marketPoints: marketPoints.map(exportMarketPoint),
+    cargoPoints: cargoPoints.map(exportCargoPoint),
+    marketDays: marketDays.map(exportMarketDay),
+    cargoDays: cargoDays.map(exportCargoDay),
   };
 }
 
 export async function exportCarrierData(
   accountId: string,
   carrierId: string,
-): Promise<BackupV1> {
+): Promise<Backup> {
   const accounts = await listAccounts();
   const account = accounts.find((candidate) => candidate.id === accountId);
   if (!account) throw new Error('Account not found.');
@@ -87,19 +142,37 @@ export async function exportCarrierData(
   const carriers = (await listAllCarriers()).filter(
     (carrier) => carrier.accountId === accountId && carrier.id === carrierId,
   );
-  const snapshots = await snapshotsForCarrier(carrierId);
-  const summaries = (await allSummaries()).filter(
+  const [
+    snapshots,
+    summaries,
+    marketPoints,
+    cargoPoints,
+    marketDays,
+    cargoDays,
+  ] = await Promise.all([
+    snapshotsForCarrier(carrierId),
+    allSummaries(),
+    marketPointsForCarrier(carrierId),
+    cargoPointsForCarrier(carrierId),
+    marketDaysForCarrier(carrierId),
+    cargoDaysForCarrier(carrierId),
+  ]);
+  const carrierSummaries = summaries.filter(
     (summary) => summary.accountId === accountId && summary.carrierId === carrierId,
   );
 
   return {
     app: 'carrier-helper',
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: Date.now(),
     accounts: [exportAccount(account)],
     carriers: carriers.map(exportCarrier),
     snapshots: snapshots.map(exportSnapshot),
-    summaries: summaries.map(exportSummary),
+    summaries: carrierSummaries.map(exportSummary),
+    marketPoints: marketPoints.map(exportMarketPoint),
+    cargoPoints: cargoPoints.map(exportCargoPoint),
+    marketDays: marketDays.map(exportMarketDay),
+    cargoDays: cargoDays.map(exportCargoDay),
   };
 }
 
@@ -108,7 +181,7 @@ export function backupFilename(now = new Date()): string {
   return `carrier-helper-backup-${date}.json`;
 }
 
-export function downloadBackup(backup: BackupV1, filename = backupFilename()): void {
+export function downloadBackup(backup: Backup, filename = backupFilename()): void {
   const blob = new Blob([JSON.stringify(backup, null, 2)], {
     type: 'application/json',
   });
