@@ -1,5 +1,6 @@
 export const CARRIER_TABS = [
   'overview',
+  'history',
   'market',
   'finances',
   'cargo',
@@ -13,7 +14,6 @@ export type CarrierTab = (typeof CARRIER_TABS)[number];
 export type Route =
   | { name: 'dashboard' }
   | { name: 'carrier'; carrierId: string; tab: CarrierTab }
-  | { name: 'history' }
   | { name: 'settings' };
 
 export function parseRoute(hash: string): Route {
@@ -25,7 +25,6 @@ export function parseRoute(hash: string): Route {
       : 'overview';
     return { name: 'carrier', carrierId: parts[1], tab };
   }
-  if (parts[0] === 'history') return { name: 'history' };
   if (parts[0] === 'settings') return { name: 'settings' };
   return { name: 'dashboard' };
 }
@@ -34,6 +33,6 @@ export function carrierHref(carrierId: string, tab: CarrierTab = 'overview'): st
   return `#/carrier/${encodeURIComponent(carrierId)}/${tab}`;
 }
 
-export function routeSection(route: Route): 'dashboard' | 'history' | 'settings' | 'carrier' {
+export function routeSection(route: Route): 'dashboard' | 'settings' | 'carrier' {
   return route.name === 'carrier' ? 'carrier' : route.name;
 }

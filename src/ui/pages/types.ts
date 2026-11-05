@@ -4,7 +4,6 @@ import type { Route } from '../route';
 export interface PageContext {
   route: Route;
   accounts: AccountRecord[];
-  selectedAccount: AccountRecord | null;
   navigate: (hash: string) => void;
 }
 

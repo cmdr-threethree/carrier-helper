@@ -21,6 +21,7 @@ import { requestRender } from '../events';
 import { badge, emptyState, pageHeader, stat } from '../layout';
 import { syncAndReport } from '../router';
 import { showToast } from '../components/toast';
+import { carrierHref } from '../route';
 import type { PageContext, PageResult } from './types';
 
 interface AccountView {
@@ -91,8 +92,8 @@ function accountCard(view: AccountView): HTMLElement {
     actions.push(
       el(
         'a',
-        { class: 'btn btn-ghost btn-small', href: `#/carrier/${encodeURIComponent(carrier.id)}` },
-        'Open carrier',
+        { class: 'btn btn-secondary btn-small', href: carrierHref(carrier.id) },
+        'Open carrier →',
       ),
     );
   }
@@ -115,8 +116,11 @@ function accountCard(view: AccountView): HTMLElement {
         el(
           'h2',
           { class: 'carrier-name' },
-          carrier ? carrier.vanityName || carrier.callsign : accountLabel(account),
+          carrier
+            ? el('a', { class: 'carrier-name-link', href: carrierHref(carrier.id) }, carrier.vanityName || carrier.callsign)
+            : accountLabel(account),
         ),
+        el('p', { class: 'carrier-commander' }, accountLabel(account)),
         el(
           'p',
           { class: 'carrier-meta' },

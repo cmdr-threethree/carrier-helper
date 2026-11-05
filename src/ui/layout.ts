@@ -1,5 +1,3 @@
-import { accountLabel, isDemoAccount } from '../auth/accounts';
-import type { AccountRecord } from '../storage/schema';
 import { el, type Child } from './dom';
 import { routeSection, type Route } from './route';
 
@@ -20,37 +18,10 @@ function navLink(label: string, href: string, active: boolean): HTMLElement {
 }
 
 export function createHeader(input: {
-  accounts: AccountRecord[];
-  selectedAccount: AccountRecord | null;
   route: Route;
-  onSelectAccount: (accountId: string) => void;
   onAddAccount: () => void;
 }): HTMLElement {
-  const { accounts, selectedAccount, route } = input;
-  const section = routeSection(route);
-  const select = el(
-    'select',
-    {
-      class: 'account-select',
-      'aria-label': 'Selected account',
-      disabled: accounts.length === 0,
-      on: {
-        change: (event) => {
-          const value = (event.currentTarget as HTMLSelectElement).value;
-          if (value) input.onSelectAccount(value);
-        },
-      },
-    },
-    ...(accounts.length
-      ? accounts.map((account) =>
-          el(
-            'option',
-            { value: account.id, selected: account.id === selectedAccount?.id },
-            `${accountLabel(account)}${isDemoAccount(account) ? ' (demo)' : ''}`,
-          ),
-        )
-      : [el('option', { value: '' }, 'No accounts')]),
-  );
+  const section = routeSection(input.route);
 
   return el(
     'header',
@@ -73,17 +44,11 @@ export function createHeader(input: {
         'nav',
         { class: 'main-nav', 'aria-label': 'Primary navigation' },
         navLink('Carriers', '#/', section === 'dashboard' || section === 'carrier'),
-        navLink('History', '#/history', section === 'history'),
         navLink('Settings', '#/settings', section === 'settings'),
       ),
       el(
         'div',
         { class: 'header-actions' },
-        accounts.length > 1
-          ? el('label', { class: 'account-picker' }, el('span', null, 'Account'), select)
-          : accounts.length === 1
-            ? el('div', { class: 'account-picker' }, el('span', null, 'Account'), select)
-            : null,
         el(
           'button',
           { class: 'btn btn-secondary btn-small', type: 'button', on: { click: input.onAddAccount } },

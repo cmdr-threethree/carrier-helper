@@ -1,4 +1,3 @@
-import { resolveSelectedAccount, setSelectedAccountId } from '../auth/accounts';
 import { connectAccountWithPrompt } from './account-actions';
 import { config } from '../config';
 import { isAppError, toAppError, userMessage } from '../lib/errors';
@@ -11,7 +10,6 @@ import { RERENDER_EVENT } from './events';
 import { createFooter, createHeader, emptyState } from './layout';
 import { renderCarrier } from './pages/carrier';
 import { renderDashboard } from './pages/dashboard';
-import { renderHistory } from './pages/history';
 import { renderSettings } from './pages/settings';
 import type { PageContext, PageResult } from './pages/types';
 import { parseRoute, type Route } from './route';
@@ -58,8 +56,6 @@ async function renderPage(context: PageContext): Promise<PageResult> {
   switch (context.route.name) {
     case 'carrier':
       return renderCarrier(context, context.route);
-    case 'history':
-      return renderHistory(context);
     case 'settings':
       return renderSettings(context);
     case 'dashboard':
@@ -79,14 +75,12 @@ async function renderApp(): Promise<void> {
 
   try {
     const accounts = await listAccounts();
-    const selectedAccount = resolveSelectedAccount(accounts);
     if (token !== renderToken) return;
 
     const route = parseRoute(window.location.hash);
     const context: PageContext = {
       route,
       accounts,
-      selectedAccount,
       navigate,
     };
     const page = await renderPage(context);
@@ -94,14 +88,7 @@ async function renderApp(): Promise<void> {
 
     cleanup = page.cleanup ?? null;
     const header = createHeader({
-      accounts,
-      selectedAccount,
       route,
-      onSelectAccount: (accountId) => {
-        setSelectedAccountId(accountId);
-        if (route.name === 'carrier') navigate('#/');
-        else scheduleRender();
-      },
       onAddAccount: () => {
         void connectAccountWithPrompt()
           .then((account) => {
@@ -133,7 +120,6 @@ export function startRouter(): void {
   started = true;
   window.addEventListener('hashchange', scheduleRender);
   window.addEventListener(RERENDER_EVENT, scheduleRender);
-  window.addEventListener('carrier-helper:account-changed', scheduleRender);
   window.addEventListener('online', () => showToast('Back online.', 'success', 2500));
   window.addEventListener('offline', () => showToast('You are offline.', 'warning', 3500));
   void renderApp();

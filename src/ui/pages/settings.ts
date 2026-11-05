@@ -5,22 +5,16 @@ import {
   disconnectAccount,
   isDemoAccount,
   reauthAccount,
-  setSelectedAccountId,
 } from '../../auth/accounts';
 import { connectAccountWithPrompt, renameAccountWithPrompt } from '../account-actions';
 import { importBackup, parseBackupFile, previewBackup, type ImportMode } from '../../backup/import';
-import { downloadBackup, exportAllData, exportCarrierData } from '../../backup/export';
+import { downloadBackup, exportAllData } from '../../backup/export';
 import type { BackupV1 } from '../../backup/validate';
 import { configurationProblem, config } from '../../config';
 import { userMessage } from '../../lib/errors';
 import { formatBytes } from '../../lib/format';
 import { formatDateTime, formatRelative } from '../../lib/time';
-import {
-  clearDataStores,
-  getCarrier,
-  listAccounts,
-  storageUsage,
-} from '../../storage/repos';
+import { clearDataStores, listAccounts, storageUsage } from '../../storage/repos';
 import { el, type Child } from '../dom';
 import { requestRender } from '../events';
 import { badge, infoGrid, pageHeader, section } from '../layout';
@@ -168,7 +162,7 @@ function configSection(): HTMLElement {
   );
 }
 
-async function storageSection(context: PageContext): Promise<HTMLElement> {
+async function storageSection(): Promise<HTMLElement> {
   const usage = await storageUsage();
   let quotaText = 'Not available';
   let persistedText = 'Not available';
@@ -183,10 +177,6 @@ async function storageSection(context: PageContext): Promise<HTMLElement> {
   } catch {
     // Storage APIs are optional.
   }
-
-  const carrier = context.selectedAccount?.carrierId
-    ? await getCarrier(context.selectedAccount.carrierId)
-    : undefined;
 
   const exportAllButton = el(
     'button',
@@ -205,27 +195,6 @@ async function storageSection(context: PageContext): Promise<HTMLElement> {
       },
     },
     'Export all data',
-  );
-
-  const exportCarrierButton = el(
-    'button',
-    {
-      class: 'btn btn-secondary btn-small',
-      type: 'button',
-      disabled: !context.selectedAccount || !carrier,
-      on: {
-        click: () => {
-          if (!context.selectedAccount || !carrier) return;
-          void exportCarrierData(context.selectedAccount.id, carrier.id)
-            .then((backup) => {
-              downloadBackup(backup, `carrier-helper-${carrier.callsign}.json`);
-              showToast('Carrier backup downloaded.', 'success');
-            })
-            .catch((error: unknown) => showToast(userMessage(error), 'error'));
-        },
-      },
-    },
-    'Export selected carrier',
   );
 
   const preview = el('p', { class: 'muted small' }, 'No backup file selected.');
@@ -333,7 +302,7 @@ async function storageSection(context: PageContext): Promise<HTMLElement> {
       ['Retention', 'Raw 7 days (latest kept); summaries 90 days'],
       ['Raw snapshot cap', formatBytes(config.rawStorageCapBytes)],
     ]),
-    el('div', { class: 'button-row' }, exportAllButton, exportCarrierButton, persistenceButton),
+    el('div', { class: 'button-row' }, exportAllButton, persistenceButton),
     el(
       'div',
       { class: 'import-box' },
@@ -358,7 +327,6 @@ async function storageSection(context: PageContext): Promise<HTMLElement> {
               if (!window.confirm('Delete all Carrier Helper data in this browser? This cannot be undone.')) return;
               void clearDataStores()
                 .then(() => {
-                  setSelectedAccountId(null);
                   showToast('All local data deleted.', 'success');
                   requestRender();
                 })
@@ -388,7 +356,7 @@ function aboutSection(): HTMLElement {
   );
 }
 
-export async function renderSettings(context: PageContext): Promise<PageResult> {
+export async function renderSettings(_context: PageContext): Promise<PageResult> {
   const accounts = await listAccounts();
   const addButton = el(
     'button',
@@ -428,7 +396,7 @@ export async function renderSettings(context: PageContext): Promise<PageResult> 
         el('div', { class: 'button-row' }, addButton),
       ),
       configSection(),
-      await storageSection(context),
+      await storageSection(),
       aboutSection(),
     ),
   };

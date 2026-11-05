@@ -1,54 +1,13 @@
 import { config } from '../config';
 import { AppError } from '../lib/errors';
 import { createDemoAccount } from '../mock/demo';
-import { deleteAccount, getAccount, listAccounts, saveAccount } from '../storage/repos';
+import { deleteAccount, getAccount, saveAccount } from '../storage/repos';
 import {
   emptySyncState,
   type AccountRecord,
   type TokenSet,
 } from '../storage/schema';
 import { beginAuth, handleAuthCallback, type AuthOptions, type PendingAuth } from './oauth';
-
-const SELECTED_KEY = 'carrier-helper.selected-account';
-
-export function getSelectedAccountId(): string | null {
-  try {
-    return localStorage.getItem(SELECTED_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function writeSelectedAccountId(accountId: string | null): void {
-  try {
-    if (accountId) localStorage.setItem(SELECTED_KEY, accountId);
-    else localStorage.removeItem(SELECTED_KEY);
-  } catch {
-    // Ignore unavailable localStorage.
-  }
-}
-
-export function setSelectedAccountId(accountId: string | null): void {
-  writeSelectedAccountId(accountId);
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('carrier-helper:account-changed'));
-  }
-}
-
-export function resolveSelectedAccount(
-  accounts: AccountRecord[],
-  preferred = getSelectedAccountId(),
-): AccountRecord | null {
-  if (!accounts.length) {
-    if (preferred) writeSelectedAccountId(null);
-    return null;
-  }
-  const match = preferred ? accounts.find((account) => account.id === preferred) : undefined;
-  if (match) return match;
-  const first = accounts[0] ?? null;
-  if (first) writeSelectedAccountId(first.id);
-  return first;
-}
 
 export function accountLabel(account: AccountRecord): string {
   return account.displayName || `Frontier account ${account.id}`;
@@ -76,9 +35,7 @@ export function authorizationWarning(
 export async function connectAccount(displayName?: string): Promise<AccountRecord | null> {
   const label = displayName?.trim() || undefined;
   if (config.mockAuth) {
-    const account = await createDemoAccount(Date.now(), label);
-    setSelectedAccountId(account.id);
-    return account;
+    return createDemoAccount(Date.now(), label);
   }
   await beginAuth({ mode: 'add', label });
   return null;
@@ -172,7 +129,6 @@ export async function completeAuthCallback(
     tokens: result.tokens,
     now,
   });
-  setSelectedAccountId(account.id);
   return { account, pending: result.pending };
 }
 
@@ -190,10 +146,6 @@ export async function disconnectAccount(accountId: string): Promise<void> {
 
 export async function deleteAccountData(accountId: string): Promise<void> {
   await deleteAccount(accountId);
-  if (getSelectedAccountId() === accountId) {
-    const remaining = await listAccounts();
-    setSelectedAccountId(remaining[0]?.id ?? null);
-  }
 }
 
 export async function markNeedsReauth(accountId: string): Promise<void> {

@@ -1,4 +1,5 @@
-import { isDemoAccount, reauthAccount } from '../../auth/accounts';
+import { accountLabel, isDemoAccount, reauthAccount } from '../../auth/accounts';
+import { downloadBackup, exportCarrierData } from '../../backup/export';
 import { cooldownRemaining, countdownLabel } from '../../capi/cooldown';
 import type { FleetCarrierResponse, SummaryMetrics } from '../../capi/types';
 import {
@@ -23,6 +24,7 @@ import { badge, emptyState, infoGrid, pageHeader, section, stat } from '../layou
 import { syncAndReport } from '../router';
 import { dataTable, keyValueTable } from '../components/table';
 import { showToast } from '../components/toast';
+import { renderHistoryTab } from './history';
 import { CARRIER_TABS, carrierHref, type CarrierTab } from '../route';
 import type { PageContext, PageResult } from './types';
 
@@ -92,6 +94,7 @@ function overview(
   carrier: CarrierRecord,
   data: FleetCarrierResponse | null,
   summary: SummaryMetrics | null,
+  commanderName: string,
 ): Child[] {
   const metrics = summary;
   const finance = data?.finance;
@@ -113,6 +116,7 @@ function overview(
       section(
         'Carrier',
         infoGrid([
+          ['Commander', commanderName],
           ['Callsign', carrier.callsign],
           ['Name', carrier.vanityName],
           ['System', dash(carrier.currentSystem)],
@@ -388,7 +392,35 @@ function servicesTab(data: FleetCarrierResponse): Child[] {
   ];
 }
 
-async function rawTab(snapshot: SnapshotRecord | null): Promise<Child[]> {
+async function rawTab(
+  snapshot: SnapshotRecord | null,
+  carrier: CarrierRecord,
+  account: AccountRecord | null,
+): Promise<Child[]> {
+  const exportButton = el(
+    'button',
+    {
+      class: 'btn btn-secondary btn-small',
+      type: 'button',
+      disabled: !account,
+      on: {
+        click: () => {
+          if (!account) return;
+          void exportCarrierData(account.id, carrier.id)
+            .then((backup) => {
+              downloadBackup(
+                backup,
+                `carrier-helper-${carrier.callsign}.json`,
+              );
+              showToast('Carrier backup downloaded.', 'success');
+            })
+            .catch((error: unknown) => showToast(userMessage(error), 'error'));
+        },
+      },
+    },
+    'Export carrier backup',
+  );
+
   if (!snapshot) {
     return [
       el(
@@ -396,6 +428,7 @@ async function rawTab(snapshot: SnapshotRecord | null): Promise<Child[]> {
         { class: 'muted' },
         'No full snapshot is retained. Raw snapshots expire after 7 days, but the latest snapshot per carrier is normally kept.',
       ),
+      el('div', { class: 'raw-actions' }, exportButton),
     ];
   }
   const json = JSON.stringify(snapshot.raw, null, 2);
@@ -442,6 +475,7 @@ async function rawTab(snapshot: SnapshotRecord | null): Promise<Child[]> {
         },
         'Download JSON',
       ),
+      exportButton,
     ),
     el('pre', { class: 'raw-json' }, json),
   ];
@@ -490,6 +524,9 @@ export async function renderCarrier(
 
   let tabContent: Child[];
   switch (route.tab) {
+    case 'history':
+      tabContent = await renderHistoryTab(carrier);
+      break;
     case 'market':
       tabContent = data ? marketTab(data) : [emptyState('No snapshot', 'Sync this carrier to fetch market data.')];
       break;
@@ -506,11 +543,16 @@ export async function renderCarrier(
       tabContent = data ? servicesTab(data) : [emptyState('No snapshot', 'Sync this carrier to fetch service data.')];
       break;
     case 'raw':
-      tabContent = await rawTab(snapshot);
+      tabContent = await rawTab(snapshot, carrier, account ?? null);
       break;
     case 'overview':
     default:
-      tabContent = overview(carrier, data, summary);
+      tabContent = overview(
+        carrier,
+        data,
+        summary,
+        account ? accountLabel(account) : 'Unknown account',
+      );
       break;
   }
 
@@ -538,7 +580,11 @@ export async function renderCarrier(
     node: el(
       'div',
       null,
-      pageHeader(displayName, `${carrier.callsign} · ${carrier.currentSystem}`, actions),
+      pageHeader(
+        displayName,
+        `${account ? accountLabel(account) : 'Unknown account'} · ${carrier.callsign} · ${carrier.currentSystem}`,
+        actions,
+      ),
       el(
         'div',
         { class: 'carrier-status-line' },

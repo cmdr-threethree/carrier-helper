@@ -14,12 +14,15 @@ Pages Function forwards only `GET /fleetcarrier` and adds no application state.
 ## Features
 
 - Frontier OAuth2 Authorization Code flow with PKCE
-- Multiple Frontier accounts with fully separated carriers and history
+- Multiple Frontier accounts with fully separated carriers and history; the
+  dashboard lists every account and carrier directly
 - Manual `/fleetcarrier` sync, limited to one request per commander every
   15 minutes
-- Carrier dashboard: balance, fuel, capacity, upkeep, market profit, state
-- Detail views: market and orders, finances, cargo, itinerary, service crew,
-  raw JSON
+- Carrier dashboard: balance, fuel, capacity, upkeep, market profit, state,
+  plus the local CMDR label for each account
+- Carrier detail views: history, market and orders, finances, cargo, itinerary,
+  service crew, raw JSON
+- Carrier-scoped History tab with 7/30/90-day range controls
 - 7 days of raw snapshots (latest per carrier always kept) and 90 days of
   trend summaries
 - Balance, fuel, free-space, and market-profit charts
