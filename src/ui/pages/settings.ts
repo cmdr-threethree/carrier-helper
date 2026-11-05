@@ -6,7 +6,11 @@ import {
   isDemoAccount,
   reauthAccount,
 } from '../../auth/accounts';
-import { connectAccountWithPrompt, renameAccountWithPrompt } from '../account-actions';
+import {
+  connectAccountWithPrompt,
+  renameAccountWithPrompt,
+  tryDemoAccount,
+} from '../account-actions';
 import { importBackup, parseBackupFile, previewBackup, type ImportMode } from '../../backup/import';
 import { downloadBackup, exportAllData } from '../../backup/export';
 import type { Backup } from '../../backup/validate';
@@ -14,6 +18,7 @@ import { configurationProblem, config } from '../../config';
 import { userMessage } from '../../lib/errors';
 import { formatBytes, formatNumber } from '../../lib/format';
 import { formatDateTime, formatRelative } from '../../lib/time';
+import { deleteDemoAccounts } from '../../mock/demo';
 import { clearDataStores, listAccounts } from '../../storage/repos';
 import { getStorageBreakdown, invalidateStorageBreakdown } from '../../storage/stats';
 import { el, type Child } from '../dom';
@@ -176,7 +181,7 @@ const STORE_LABELS: Record<string, string> = {
   cargoDays: 'Cargo days',
 };
 
-async function storageSection(): Promise<HTMLElement> {
+async function storageSection(demoCount: number): Promise<HTMLElement> {
   const breakdown = await getStorageBreakdown();
   let quotaText = 'Not available';
   let persistedText = 'Not available';
@@ -374,24 +379,50 @@ async function storageSection(): Promise<HTMLElement> {
       el('h3', null, 'Danger zone'),
       el('p', { class: 'muted small' }, 'Delete all accounts, carriers, snapshots, and summaries from this browser. Backups are not affected.'),
       el(
-        'button',
-        {
-          class: 'btn btn-danger btn-small',
-          type: 'button',
-          on: {
-            click: () => {
-              if (!window.confirm('Delete all Carrier Helper data in this browser? This cannot be undone.')) return;
-              void clearDataStores()
-                .then(() => invalidateStorageBreakdown())
-                .then(() => {
-                  showToast('All local data deleted.', 'success');
-                  requestRender();
-                })
-                .catch((error: unknown) => showToast(userMessage(error), 'error'));
+        'div',
+        { class: 'button-row' },
+        demoCount > 0
+          ? el(
+              'button',
+              {
+                class: 'btn btn-danger btn-small',
+                type: 'button',
+                on: {
+                  click: () => {
+                    if (!window.confirm('Delete all demo accounts and their generated history? Real accounts are untouched.')) return;
+                    void deleteDemoAccounts()
+                      .then(() => invalidateStorageBreakdown())
+                      .then(() => {
+                        showToast('Demo data deleted.', 'success');
+                        requestRender();
+                      })
+                      .catch((error: unknown) => showToast(userMessage(error), 'error'));
+                  },
+                },
+              },
+              'Delete demo data',
+            )
+          : null,
+        el(
+          'button',
+          {
+            class: 'btn btn-danger btn-small',
+            type: 'button',
+            on: {
+              click: () => {
+                if (!window.confirm('Delete all Carrier Helper data in this browser? This cannot be undone.')) return;
+                void clearDataStores()
+                  .then(() => invalidateStorageBreakdown())
+                  .then(() => {
+                    showToast('All local data deleted.', 'success');
+                    requestRender();
+                  })
+                  .catch((error: unknown) => showToast(userMessage(error), 'error'));
+              },
             },
           },
-        },
-        'Delete all data',
+          'Delete all data',
+        ),
       ),
     ),
   );
@@ -415,22 +446,40 @@ function aboutSection(): HTMLElement {
 
 export async function renderSettings(_context: PageContext): Promise<PageResult> {
   const accounts = await listAccounts();
-  const addButton = el(
+  const demoCount = accounts.filter(isDemoAccount).length;
+  const connectButton = config.mockAuth
+    ? null
+    : el(
+        'button',
+        {
+          class: 'btn btn-primary btn-small',
+          type: 'button',
+          on: {
+            click: () => {
+              void connectAccountWithPrompt()
+                .then((account) => {
+                  if (account) requestRender();
+                })
+                .catch((error: unknown) => showToast(userMessage(error), 'error'));
+            },
+          },
+        },
+        'Connect Frontier account',
+      );
+  const demoButton = el(
     'button',
     {
-      class: 'btn btn-primary btn-small',
+      class: config.mockAuth ? 'btn btn-primary btn-small' : 'btn btn-secondary btn-small',
       type: 'button',
       on: {
         click: () => {
-          void connectAccountWithPrompt()
-            .then((account) => {
-              if (account) requestRender();
-            })
+          void tryDemoAccount()
+            .then(() => requestRender())
             .catch((error: unknown) => showToast(userMessage(error), 'error'));
         },
       },
     },
-    config.mockAuth ? 'Create demo account' : 'Connect another account',
+    config.mockAuth ? 'Create demo account' : 'Try demo',
   );
 
   const accountsContent = accounts.length
@@ -450,10 +499,10 @@ export async function renderSettings(_context: PageContext): Promise<PageResult>
           { class: 'muted small' },
           'To add a different Frontier account, sign out of Frontier first or use a private window if the browser reuses the current login session.',
         ),
-        el('div', { class: 'button-row' }, addButton),
+        el('div', { class: 'button-row' }, connectButton, demoButton),
       ),
       configSection(),
-      await storageSection(),
+      await storageSection(demoCount),
       aboutSection(),
     ),
   };

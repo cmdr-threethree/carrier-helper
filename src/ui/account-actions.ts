@@ -1,6 +1,8 @@
 import { connectAccount, renameAccount } from '../auth/accounts';
 import { userMessage } from '../lib/errors';
+import { ensureDemoAccount } from '../mock/demo';
 import type { AccountRecord } from '../storage/schema';
+import { invalidateStorageBreakdown } from '../storage/stats';
 import { promptAccountName } from './components/account-dialog';
 import { showToast } from './components/toast';
 
@@ -13,6 +15,13 @@ export async function connectAccountWithPrompt(): Promise<AccountRecord | null> 
   });
   if (name === null) return null;
   return connectAccount(name);
+}
+
+export async function tryDemoAccount(): Promise<AccountRecord> {
+  const account = await ensureDemoAccount();
+  await invalidateStorageBreakdown();
+  showToast('Demo account ready. Data is generated locally.', 'success');
+  return account;
 }
 
 export async function renameAccountWithPrompt(account: AccountRecord): Promise<boolean> {

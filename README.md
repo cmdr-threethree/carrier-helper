@@ -14,6 +14,8 @@ Pages Function forwards only `GET /fleetcarrier` and adds no application state.
 ## Features
 
 - Frontier OAuth2 Authorization Code flow with PKCE
+- Public **Try demo** mode that creates a local generated account without
+  contacting Frontier
 - Multiple Frontier accounts with fully separated carriers and history; the
   dashboard lists every account and carrier directly
 - Manual `/fleetcarrier` sync, limited to one request per commander every
@@ -76,10 +78,15 @@ the Frontier shared key/client secret in any `VITE_*` variable.
 npm run dev
 ```
 
-Local development uses `.env.development`, which enables **demo mode**. Demo
-accounts are generated entirely in the browser with 30 days of history, so no
-Frontier login is required. Real OAuth should be tested on the deployed origin
-because no localhost redirect URI is registered.
+Local development uses `.env.development`, which enables **demo-only mode**.
+Demo accounts are generated entirely in the browser with 30 days of history, so
+no Frontier login is required. Real OAuth should be tested on the deployed
+origin because no localhost redirect URI is registered.
+
+A normal production build also exposes **Try demo** alongside the real Frontier
+connect button. It reuses an existing demo account or creates one locally. No
+OAuth request is made. Demo accounts are marked with a `DEMO` pill and can be
+removed with Settings → Danger zone → **Delete demo data**.
 
 ### Build and preview
 

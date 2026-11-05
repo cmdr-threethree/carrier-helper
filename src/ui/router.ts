@@ -1,3 +1,4 @@
+import { isDemoAccount } from '../auth/accounts';
 import { connectAccountWithPrompt } from './account-actions';
 import { config } from '../config';
 import { isAppError, toAppError, userMessage } from '../lib/errors';
@@ -99,12 +100,24 @@ async function renderApp(): Promise<void> {
       },
     });
 
+    const hasRealAccount = accounts.some((account) => !isDemoAccount(account));
+    const hasDemoAccount = accounts.some(isDemoAccount);
+    const showDemoBanner = config.mockAuth || (hasDemoAccount && !hasRealAccount);
+
     app.replaceChildren(
       header,
       el(
         'main',
         { class: 'page' },
-        config.mockAuth ? el('div', { class: 'demo-banner' }, 'Demo mode: accounts and carrier data are generated locally.') : null,
+        showDemoBanner
+          ? el(
+              'div',
+              { class: 'demo-banner' },
+              config.mockAuth
+                ? 'Demo mode: accounts and carrier data are generated locally.'
+                : 'Demo mode: carrier data is generated locally. Connect Frontier for live data.',
+            )
+          : null,
         page.node,
       ),
       createFooter(),

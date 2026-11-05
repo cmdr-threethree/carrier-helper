@@ -3,9 +3,13 @@ import {
   accountLabel,
   renameAccount,
 } from '../src/auth/accounts';
-import { createDemoAccount } from '../src/mock/demo';
+import {
+  createDemoAccount,
+  deleteDemoAccounts,
+  ensureDemoAccount,
+} from '../src/mock/demo';
 import { resetDatabaseForTests } from '../src/storage/db';
-import { getAccount, saveAccount } from '../src/storage/repos';
+import { getAccount, listAccounts, saveAccount } from '../src/storage/repos';
 import { makeAccount } from './helpers';
 
 describe('account labels', () => {
@@ -46,5 +50,23 @@ describe('account labels', () => {
     expect(accountLabel(makeAccount({ displayName: '' }))).toBe(
       'Frontier account account-1',
     );
+  });
+
+  it('reuses the existing demo account', async () => {
+    const created = await createDemoAccount(1_900_000_000_000, 'First Demo');
+    const reused = await ensureDemoAccount();
+    expect(reused.id).toBe(created.id);
+    expect(reused.displayName).toBe('First Demo');
+  });
+
+  it('deletes only demo accounts', async () => {
+    await createDemoAccount(1_900_000_000_000);
+    const real = makeAccount({ id: 'real-1', platform: 'frontier' });
+    await saveAccount(real);
+
+    const deleted = await deleteDemoAccounts();
+    expect(deleted).toBe(1);
+    const accounts = await listAccounts();
+    expect(accounts.map((account) => account.id)).toEqual(['real-1']);
   });
 });

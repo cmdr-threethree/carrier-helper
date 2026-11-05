@@ -4,7 +4,7 @@ import {
   isDemoAccount,
   reauthAccount,
 } from '../../auth/accounts';
-import { connectAccountWithPrompt } from '../account-actions';
+import { connectAccountWithPrompt, tryDemoAccount } from '../account-actions';
 import { cooldownRemaining, countdownLabel } from '../../capi/cooldown';
 import type { SummaryRecord } from '../../storage/schema';
 import type { AccountRecord, CarrierRecord } from '../../storage/schema';
@@ -179,36 +179,54 @@ export async function renderDashboard(context: PageContext): Promise<PageResult>
   );
 
   const problem = configurationProblem();
-  const addButton = el(
+  const demoButton = el(
     'button',
     {
-      class: 'btn btn-primary',
+      class: config.mockAuth ? 'btn btn-primary' : 'btn btn-secondary',
       type: 'button',
       on: {
         click: () => {
-          void connectAccountWithPrompt()
-            .then((account) => {
-              if (account) requestRender();
-            })
+          void tryDemoAccount()
+            .then(() => requestRender())
             .catch((error: unknown) => showToast(userMessage(error), 'error'));
         },
       },
     },
-    config.mockAuth ? 'Create demo account' : 'Connect Frontier account',
+    config.mockAuth ? 'Create demo account' : 'Try demo',
   );
+  const connectButton = config.mockAuth
+    ? null
+    : el(
+        'button',
+        {
+          class: 'btn btn-primary',
+          type: 'button',
+          on: {
+            click: () => {
+              void connectAccountWithPrompt()
+                .then((account) => {
+                  if (account) requestRender();
+                })
+                .catch((error: unknown) => showToast(userMessage(error), 'error'));
+            },
+          },
+        },
+        'Connect Frontier account',
+      );
 
   let content: Node;
   if (!context.accounts.length) {
     content = emptyState(
-      config.mockAuth ? 'Try Carrier Helper with demo data' : 'Connect your first Frontier account',
+      config.mockAuth ? 'Try Carrier Helper with demo data' : 'Connect Frontier or try the demo',
       problem ??
         (config.mockAuth
           ? 'Demo mode creates local accounts with 30 days of generated carrier history. No Frontier login is required.'
-          : 'Carrier Helper uses Frontier OAuth with PKCE. Your tokens stay in this browser and are never uploaded.'),
+          : 'Connect a Frontier account for live carrier data, or try the demo with 30 days of generated history. Demo data stays in this browser.'),
       el(
         'div',
         { class: 'empty-actions' },
-        addButton,
+        connectButton,
+        demoButton,
         config.mockAuth
           ? null
           : el(
@@ -232,7 +250,7 @@ export async function renderDashboard(context: PageContext): Promise<PageResult>
           { class: 'muted small' },
           'Frontier CAPI requests are limited to one per commander every 15 minutes. Use each carrier’s Sync button when the countdown reaches zero.',
         ),
-        addButton,
+        el('div', { class: 'button-row' }, connectButton, demoButton),
       ),
     );
   }

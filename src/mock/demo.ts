@@ -4,6 +4,7 @@ import type { FleetCarrierResponse } from '../capi/types';
 import { encodeCapiName } from '../lib/hex';
 import {
   commitSnapshotBundle,
+  deleteAccount,
   listAccounts,
   putCargoPoints,
   putMarketPoints,
@@ -243,6 +244,24 @@ export function demoCarrierResponse(
     modules: {},
     lastUpdated: nowIso,
   };
+}
+
+export async function ensureDemoAccount(
+  displayName = 'Demo Commander',
+): Promise<AccountRecord> {
+  const existing = (await listAccounts()).find((account) => account.platform === 'demo');
+  if (existing) return existing;
+  return createDemoAccount(Date.now(), displayName);
+}
+
+export async function deleteDemoAccounts(): Promise<number> {
+  const accounts = (await listAccounts()).filter(
+    (account) => account.platform === 'demo',
+  );
+  for (const account of accounts) {
+    await deleteAccount(account.id);
+  }
+  return accounts.length;
 }
 
 export async function createDemoAccount(
